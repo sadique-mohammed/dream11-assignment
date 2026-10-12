@@ -1,0 +1,193 @@
+{
+  "events": [
+    {
+      "id": "arg-penalty-73",
+      "title": "Argentina's Penalty & Messi Goal",
+      "matchMinute": "73'",
+      "videoTimeSeconds": 5009.66,
+      "period": "second_half",
+      "type": "penalty_goal",
+      "description": "Denzel Dumfries fouls Marcos Acuña inside the penalty box; Lionel Messi converts the penalty kick to put Argentina ahead 2–0.",
+      "quickNote": "Acuña was fouled inside the Netherlands penalty area. Messi scored the penalty to put Argentina 2–0 ahead.",
+      "scoreBefore": "1-0",
+      "scoreAfter": "2-0",
+      "people": ["Lionel Messi", "Marcos Acuña", "Denzel Dumfries"],
+      "ruleTags": ["penalty_kick", "foul"],
+      "facts": [
+        "Denzel Dumfries committed a foul on Marcos Acuña inside the Netherlands penalty area at match minute 70:40.",
+        "Referee Antonio Mateu Lahoz awarded a direct penalty kick to Argentina.",
+        "Lionel Messi scored the penalty into the bottom-right corner at minute 72:39."
+      ],
+      "uncertainty": [],
+      "sources": [
+        {
+          "label": "FIFA Official Match Report",
+          "url": "https://fdp.fifa.org/assetspublic/ce44/r2859/pdf/FullTimeMatchReport-English.pdf"
+        },
+        {
+          "label": "BBC Sport Match Report",
+          "url": "https://www.bbc.co.uk/sport/football/63830319"
+        }
+      ]
+    },
+    {
+      "id": "ned-goal-83",
+      "title": "Netherlands Score: Weghorst Header",
+      "matchMinute": "83'",
+      "videoTimeSeconds": 5566.0,
+      "period": "second_half",
+      "type": "goal",
+      "description": "Substitute Wout Weghorst scores a glancing header from Steven Berghuis's curling cross to pull the Netherlands back to 2–1.",
+      "quickNote": "Weghorst had just come on. Berghuis crossed from the right, and Weghorst headed in to make it 2–1.",
+      "scoreBefore": "2-0",
+      "scoreAfter": "2-1",
+      "people": ["Wout Weghorst", "Steven Berghuis", "Memphis Depay"],
+      "ruleTags": ["goal", "substitution", "cross"],
+      "facts": [
+        "Wout Weghorst was brought on as a substitute for Memphis Depay at match minute 77:57.",
+        "Steven Berghuis delivered a curling cross from the right flank.",
+        "Weghorst scored with a glancing header into the far corner at match minute 82:17."
+      ],
+      "uncertainty": [
+        "Tactical instructions given by Netherlands coach Louis van Gaal during the substitution are not recorded in official match data."
+      ],
+      "sources": [
+        {
+          "label": "FIFA Official Match Report",
+          "url": "https://fdp.fifa.org/assetspublic/ce44/r2859/pdf/FullTimeMatchReport-English.pdf"
+        },
+        {
+          "label": "UEFA Match Summary",
+          "url": "https://www.uefa.com/news/027b-169a7b9bf623-62eb3c735cb1-1000--netherlands-at-the-2022-world-cup/"
+        }
+      ]
+    },
+    {
+      "id": "paredes-confrontation-89",
+      "title": "Paredes Foul, Bench Incident & Caution",
+      "matchMinute": "89'",
+      "videoTimeSeconds": 5915.0,
+      "period": "second_half",
+      "type": "card_and_altercation",
+      "description": "Leandro Paredes fouls Nathan Aké and kicks the ball into the Dutch dugout; Virgil van Dijk pushes him down as a mass altercation breaks out.",
+      "quickNote": "Paredes fouled Aké, then kicked the ball toward the Dutch bench. A confrontation followed, and Paredes was booked. The report does not say exactly which action led to the card.",
+      "scoreBefore": "2-1",
+      "scoreAfter": "2-1",
+      "people": ["Leandro Paredes", "Nathan Aké", "Virgil van Dijk"],
+      "ruleTags": ["yellow_card", "unsporting_behaviour", "foul"],
+      "facts": [
+        "Leandro Paredes challenged Nathan Aké near the touchline at match minute 87:57.",
+        "Immediately after the whistle, Paredes kicked the loose ball with force into the Netherlands technical area.",
+        "Virgil van Dijk charged forward and shoved Paredes to the pitch, triggering a confrontation between both benches.",
+        "Referee Antonio Mateu Lahoz cautioned Paredes with a yellow card at the 89th minute."
+      ],
+      "uncertainty": [
+        "Official records do not state whether the referee cautioned Paredes specifically for the foul on Aké, kicking the ball at the dugout (unsporting behaviour), or inciting the confrontation."
+      ],
+      "sources": [
+        {
+          "label": "FIFA Official Match Report",
+          "url": "https://fdp.fifa.org/assetspublic/ce44/r2859/pdf/FullTimeMatchReport-English.pdf"
+        },
+        {
+          "label": "BBC Sport Match Coverage",
+          "url": "https://www.bbc.co.uk/sport/football/63920253"
+        }
+      ]
+    },
+    {
+      "id": "ned-equaliser-90-11",
+      "title": "Netherlands Equalise: Disguised Free Kick",
+      "matchMinute": "90+11'",
+      "videoTimeSeconds": 6690.29,
+      "period": "second_half",
+      "type": "goal",
+      "description": "In the 101st minute, Teun Koopmeiners takes an ingenious short free kick through the defensive wall to Wout Weghorst, who turns and scores to equalise 2–2.",
+      "quickNote": "Koopmeiners rolled the free kick to Weghorst instead of shooting. Weghorst turned and scored to make it 2–2.",
+      "scoreBefore": "2-1",
+      "scoreAfter": "2-2",
+      "people": ["Wout Weghorst", "Teun Koopmeiners", "Lisandro Martínez"],
+      "ruleTags": ["goal", "free_kick", "added_time"],
+      "facts": [
+        "Referee added 10 minutes of stoppage time, extending past the 100th minute due to stoppages and altercations.",
+        "Netherlands were awarded a direct free kick on the edge of the Argentine penalty area.",
+        "Rather than shooting over the defensive wall, Teun Koopmeiners rolled a disguised low pass past the wall to Wout Weghorst.",
+        "Weghorst held off Lisandro Martínez and slotted the finish into the bottom corner at match minute 100:32 to make it 2–2."
+      ],
+      "uncertainty": [],
+      "sources": [
+        {
+          "label": "FIFA Official Match Report",
+          "url": "https://fdp.fifa.org/assetspublic/ce44/r2859/pdf/FullTimeMatchReport-English.pdf"
+        },
+        {
+          "label": "BBC Sport Match Coverage",
+          "url": "https://www.bbc.co.uk/sport/football/63920253"
+        }
+      ]
+    },
+    {
+      "id": "et-to-shootout",
+      "title": "Extra Time Ends 2–2: Advances to Shootout",
+      "matchMinute": "120+1' / ET",
+      "videoTimeSeconds": 8783.16,
+      "period": "extra_time",
+      "type": "phase_transition",
+      "description": "After 30 minutes of extra time the score remains 2–2; FIFA World Cup knockout regulations dictate that the winner is decided by a penalty shootout.",
+      "quickNote": "The score was still 2–2 after extra time, so the winner had to be decided by a penalty shootout.",
+      "scoreBefore": "2-2",
+      "scoreAfter": "2-2",
+      "people": ["Antonio Mateu Lahoz", "Lionel Messi", "Virgil van Dijk"],
+      "ruleTags": ["extra_time", "penalty_shootout", "knockout_rules"],
+      "facts": [
+        "Neither side scored during the two 15-minute extra time periods.",
+        "Under FIFA World Cup knockout rules, drawn matches after extra time proceed immediately to kicks from the penalty mark (shootout).",
+        "Both teams submitted kick orders and referee conducted the coin toss to select the goal and first kicking team."
+      ],
+      "uncertainty": [],
+      "sources": [
+        {
+          "label": "FIFA World Cup Regulations",
+          "url": "https://digitalhub.fifa.com/m/2744a0a5e3ced185/original/World-Cup-Qatar-2022-Regulations_EN.pdf"
+        },
+        {
+          "label": "IFAB Law 10: Determining the Outcome",
+          "url": "https://www.theifab.com/laws/latest/determining-the-outcome-of-a-match/"
+        }
+      ]
+    },
+    {
+      "id": "dumfries-dismissal-shootout",
+      "title": "Argentina Win Shootout 4–3 & Dumfries Red Card",
+      "matchMinute": "Shootout / FT",
+      "videoTimeSeconds": 9318.0,
+      "period": "shootout",
+      "type": "shootout_result_and_card",
+      "description": "Emiliano Martínez saves two penalties; Lautaro Martínez converts the winning kick (4–3). Denzel Dumfries receives his second caution and is sent off during post-shootout tension.",
+      "quickNote": "Argentina won the shootout 4–3. Dumfries received a second caution and was sent off after the decisive kick; it did not change the result.",
+      "scoreBefore": "2-2 (3-3 pens)",
+      "scoreAfter": "2-2 (4-3 pens)",
+      "people": ["Lautaro Martínez", "Emiliano Martínez", "Denzel Dumfries"],
+      "ruleTags": ["penalty_shootout", "second_yellow", "red_card"],
+      "facts": [
+        "Goalkeeper Emiliano Martínez saved the Netherlands' first two kicks taken by Virgil van Dijk and Steven Berghuis.",
+        "Lautaro Martínez scored Argentina's fifth penalty to secure a 4–3 shootout victory.",
+        "Denzel Dumfries was cautioned twice during the shootout phase (officially recorded at 128' and 129') and shown a red card for two bookable offences.",
+        "Dumfries's dismissal occurred as the shootout was concluding and did not affect Argentina's victory."
+      ],
+      "uncertainty": [
+        "Broadcast footage shows multiple Argentine and Dutch players clashing near the centre circle immediately following the winning kick; the referee's match report does not detail the specific verbal exchange that resulted in Dumfries's second caution."
+      ],
+      "sources": [
+        {
+          "label": "FIFA Official Match Report",
+          "url": "https://fdp.fifa.org/assetspublic/ce44/r2859/pdf/FullTimeMatchReport-English.pdf"
+        },
+        {
+          "label": "BBC Sport Shootout Report",
+          "url": "https://www.bbc.co.uk/sport/football/63930816"
+        }
+      ]
+    }
+  ]
+}

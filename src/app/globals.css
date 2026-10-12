@@ -14,16 +14,56 @@ body {
 .lens-orb {
   touch-action: none;
   cursor: grab;
+  transition: opacity 160ms ease-in, transform 180ms ease-in;
+}
+
+.lens-orb-visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.lens-orb-hidden {
+  opacity: 0;
+  transform: scale(0.88);
+  pointer-events: none;
 }
 
 .lens-panel-shell {
   position: absolute;
-  width: min(390px, calc(100% - 32px));
-  height: min(500px, calc(100% - 32px));
-  min-width: min(320px, calc(100% - 32px));
-  min-height: min(320px, calc(100% - 32px));
+  width: min(360px, calc(100% - 32px));
+  height: min(420px, calc(100% - 32px));
+  min-width: min(300px, calc(100% - 32px));
+  min-height: min(280px, calc(100% - 32px));
   resize: both;
   overflow: hidden;
+  opacity: 0;
+  transform: translateY(6px) scale(0.985);
+  transform-origin: top left;
+  pointer-events: none;
+  transition: opacity 160ms ease-in, transform 160ms ease-in;
+}
+
+.lens-panel-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lens-panel-hidden {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.lens-panel-shell.lens-note-mode {
+  width: min(332px, calc(100% - 32px));
+  height: min(224px, calc(100% - 32px));
+  min-height: min(188px, calc(100% - 32px));
+  resize: none;
 }
 
 .player-stage {
@@ -33,6 +73,13 @@ body {
 
 @media (max-width: 767px) {
   .player-stage { width: 100%; }
+  .lens-panel-shell {
+    width: min(340px, calc(100% - 24px));
+    min-width: min(280px, calc(100% - 24px));
+  }
+  .lens-panel-shell.lens-note-mode {
+    width: min(320px, calc(100% - 24px));
+  }
 }
 
 .player-shell:fullscreen {
@@ -49,6 +96,13 @@ body {
 
 .lens-orb:active {
   cursor: grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lens-orb,
+  .lens-panel-shell {
+    transition-duration: 0.01ms;
+  }
 }
 
 .marker-button {

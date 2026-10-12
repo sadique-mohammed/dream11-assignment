@@ -3,10 +3,9 @@
 import AnswerCard from "./AnswerCard";
 
 const SUGGESTED_QUESTIONS = [
-  "Why did the referee blow the whistle?",
-  "What foul was called on this play?",
-  "Can you explain the referee's card decision?",
-  "What is the official rule for this situation?",
+  "What just happened?",
+  "Why was a card shown?",
+  "What happens next?",
 ];
 
 export default function CompanionPanel({
@@ -18,9 +17,10 @@ export default function CompanionPanel({
   capturedTimestamp,
   answerData,
   errorMessage,
+  autoNoteEvent,
   onSubmit,
+  onAskAboutMoment,
   onReset,
-  onPanelPointerDown,
   onClose,
 }) {
   const handleSuggestedClick = (text) => {
@@ -29,19 +29,20 @@ export default function CompanionPanel({
   };
 
   return (
-    <aside className="flex h-full min-h-0 flex-col bg-zinc-950/55 border border-white/20 rounded-xl p-3 sm:p-4 shadow-2xl backdrop-blur-md overflow-hidden">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/20 bg-zinc-950/75 p-3 text-white shadow-2xl backdrop-blur-xl sm:p-4">
       {/* Panel Header */}
       <div className="flex items-center justify-between gap-2 pb-3 border-b border-zinc-800">
         <div
-          onPointerDown={onPanelPointerDown}
+          data-lens-drag-handle="true"
           className="min-w-0 flex-1 cursor-move select-none touch-none"
           title="Drag to move"
         >
-          <h2 className="text-sm font-semibold text-white tracking-tight">Live Lens</h2>
+          <h2 className="text-sm font-semibold tracking-tight">Live Lens</h2>
+          {!autoNoteEvent && <p className="mt-0.5 text-xs text-zinc-400">Ask about the match</p>}
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          <div className="flex items-center bg-zinc-950 p-1 rounded-lg border border-zinc-800">
+          {!autoNoteEvent && <div className="flex items-center bg-zinc-950 p-1 rounded-lg border border-zinc-800">
             <button
               type="button"
               onClick={() => setExplanationLevel("simple")}
@@ -64,12 +65,18 @@ export default function CompanionPanel({
             >
               More detail
             </button>
-          </div>
+          </div>}
 
           {onClose && (
             <button
               type="button"
-              onClick={onClose}
+              data-companion-close="true"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onClose();
+              }}
               aria-label="Close or minimise companion"
               title="Close or minimise"
               className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-colors cursor-pointer"
@@ -84,12 +91,35 @@ export default function CompanionPanel({
 
       {/* Main Content Area */}
       <div className="pt-3 flex-1 min-h-0 overflow-y-auto overscroll-contain">
-        {status === "idle" && (
+        {autoNoteEvent && status === "idle" ? (
+          <div className="flex h-full flex-col gap-3">
+            <div className="flex items-center justify-between gap-2 text-xs text-cyan-200">
+              <span>{autoNoteEvent.matchMinute}</span>
+              <span className="text-zinc-400">Quick update</span>
+            </div>
+            <h3 className="text-base font-semibold leading-snug text-white">
+              {autoNoteEvent.title}
+            </h3>
+              <p className="text-sm leading-relaxed text-zinc-100">
+                {autoNoteEvent.quickNote || autoNoteEvent.description}
+              </p>
+            <div className="mt-auto flex items-center justify-between gap-3 border-t border-zinc-800 pt-3">
+              <span className="text-xs text-zinc-400">The match keeps playing.</span>
+              <button
+                type="button"
+                onClick={() => onAskAboutMoment(autoNoteEvent)}
+                className="min-h-11 cursor-pointer rounded-lg bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+              >
+                Ask
+              </button>
+            </div>
+          </div>
+        ) : status === "idle" && (
           <div className="flex flex-col gap-4">
             {/* Suggested Questions */}
             <div>
-              <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">
-                Try asking
+              <p className="mb-2 text-xs font-medium text-zinc-400">
+                Try one of these
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {SUGGESTED_QUESTIONS.map((item, idx) => (
@@ -97,7 +127,7 @@ export default function CompanionPanel({
                     key={idx}
                     type="button"
                     onClick={() => handleSuggestedClick(item)}
-                    className="text-left text-xs bg-zinc-800/45 hover:bg-zinc-700/70 hover:text-white text-zinc-100 px-3 py-1.5 rounded-lg border border-white/15 transition-colors cursor-pointer"
+                    className="min-h-10 cursor-pointer rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-left text-xs text-zinc-100 transition-colors hover:border-zinc-500 hover:bg-zinc-800 hover:text-white"
                   >
                     {item}
                   </button>
@@ -109,7 +139,7 @@ export default function CompanionPanel({
             <form onSubmit={onSubmit} className="flex flex-col gap-3">
               <label
                 htmlFor="companion-question"
-                className="text-xs font-medium text-zinc-400 uppercase tracking-wider"
+                className="text-xs font-medium text-zinc-300"
               >
                 Ask about this moment
               </label>
@@ -118,16 +148,16 @@ export default function CompanionPanel({
                 rows={3}
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="What just happened? Why is there a confrontation?"
-                className="w-full px-3.5 py-2.5 bg-zinc-950/45 border border-white/20 focus:border-cyan-300/80 focus:ring-1 focus:ring-cyan-300 rounded-lg text-sm text-white placeholder:text-white/55 resize-none outline-none transition-all"
+                placeholder="Ask in your own words"
+                className="w-full resize-none rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-zinc-400 focus:border-cyan-300 focus:ring-1 focus:ring-cyan-300"
               />
 
               <button
                 type="submit"
                 disabled={!question.trim()}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-white font-medium text-sm rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
               >
-                <span>Ask Live Lens</span>
+                <span>Ask</span>
               </button>
             </form>
           </div>
@@ -140,7 +170,7 @@ export default function CompanionPanel({
             </div>
             <div>
               <p className="text-sm font-medium text-zinc-200">
-                Sending your question...
+                Thinking…
               </p>
             </div>
           </div>

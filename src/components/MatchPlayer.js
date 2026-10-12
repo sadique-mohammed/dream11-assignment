@@ -1,16 +1,16 @@
 "use client";
 
-import { cloneElement, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatPlaybackTime } from "@/lib/format-time";
 import { getMatchMinuteAtTime } from "@/lib/match-minute";
 import AiPet from "./AiPet";
 
-function getPanelPosition(bounds, petPosition) {
+function getPanelPosition(bounds, petPosition, compact = false) {
   const margin = 16;
   const gap = 14;
   const petSize = 56;
-  const panelWidth = Math.min(390, bounds.width - margin * 2);
-  const panelHeight = Math.min(500, bounds.height - margin * 2);
+  const panelWidth = Math.min(compact ? 332 : 360, bounds.width - margin * 2);
+  const panelHeight = Math.min(compact ? 224 : 420, bounds.height - margin * 2);
   const petLeft = petPosition.left;
   const petTop = petPosition.top;
   const roomRight = bounds.width - (petLeft + petSize) - margin;
@@ -34,12 +34,38 @@ function getPanelPosition(bounds, petPosition) {
   return { left, top };
 }
 
+function parseVttTimestamp(value) {
+  const parts = value.trim().split(":").map(Number);
+  if (parts.some(Number.isNaN)) return 0;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return (parts[0] || 0) * 60 + (parts[1] || 0);
+}
+
+function parseWebVtt(content) {
+  return content.split(/\r?\n\s*\r?\n/).flatMap((block, index) => {
+    const lines = block.trim().split(/\r?\n/);
+    const timingLine = lines.find((line) => line.includes("-->"));
+    if (!timingLine) return [];
+    const [start, end] = timingLine.split("-->").map((value) => value.trim().split(/\s+/)[0]);
+    const timingIndex = lines.indexOf(timingLine);
+    const text = lines.slice(timingIndex + 1).join(" ").replace(/<[^>]*>/g, "").trim();
+    if (!text) return [];
+    return [{ id: `${index}-${start}`, start: parseVttTimestamp(start), end: parseVttTimestamp(end), text }];
+  });
+}
+
 export default function MatchPlayer({
   videoRef,
   playbackTime,
   onTimeUpdate,
+  onSeeking,
+  onSeeked,
   companionOpen,
   onToggleCompanion,
+  onCloseCompanion,
+  autoNoteEvent,
+  onToggleAutomaticNotes,
+  automaticNotesEnabled,
   matchMinute,
   children,
 }) {
@@ -51,6 +77,10 @@ export default function MatchPlayer({
   const [orbPosition, setOrbPosition] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [panelPosition, setPanelPosition] = useState({ left: 12, top: 12 });
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [transcriptStatus, setTranscriptStatus] = useState("idle");
+  const [transcriptCues, setTranscriptCues] = useState([]);
+  const positionedNoteRef = useRef(null);
 
   const toggleCompanionAtOrb = () => {
     if (companionOpen) {
@@ -75,7 +105,40 @@ export default function MatchPlayer({
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
 
-  const toggleFullscreen = async () => {
+  useEffect(() => {
+    if (!autoNoteEvent) {
+      positionedNoteRef.current = null;
+      return;
+    }
+    if (!companionOpen || positionedNoteRef.current === autoNoteEvent.id) return;
+    const bounds = playerRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    positionedNoteRef.current = autoNoteEvent.id;
+    const petPosition = orbPosition ?? { left: bounds.width - 74, top: 18 };
+    setPanelPosition(getPanelPosition(bounds, petPosition, true));
+  }, [autoNoteEvent, companionOpen, orbPosition]);
+
+  useEffect(() => {
+    if (!transcriptOpen || transcriptStatus !== "loading") return;
+    let cancelled = false;
+    fetch("/media/commentary.vtt")
+      .then((response) => {
+        if (!response.ok) throw new Error("Transcript not found");
+        return response.text();
+      })
+      .then((content) => {
+        if (cancelled) return;
+        const cues = parseWebVtt(content);
+        setTranscriptCues(cues);
+        setTranscriptStatus(cues.length ? "ready" : "missing");
+      })
+      .catch(() => {
+        if (!cancelled) setTranscriptStatus("missing");
+      });
+    return () => { cancelled = true; };
+  }, [transcriptOpen, transcriptStatus]);
+
+  const toggleFullscreen = useCallback(async () => {
     try {
       if (document.fullscreenElement === playerRef.current) {
         await document.exitFullscreen();
@@ -85,9 +148,9 @@ export default function MatchPlayer({
     } catch {
       // Keep the inline player usable if fullscreen is unavailable in this browser.
     }
-  };
+  }, []);
 
-  const togglePlayPause = () => {
+  const togglePlayPause = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -95,13 +158,13 @@ export default function MatchPlayer({
     } else {
       video.pause();
     }
-  };
+  }, [videoRef]);
 
-  const seekRelative = (seconds) => {
+  const seekRelative = useCallback((seconds) => {
     const video = videoRef.current;
     if (!video) return;
     video.currentTime = Math.max(0, Math.min(video.duration || 9460, video.currentTime + seconds));
-  };
+  }, [videoRef]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -142,7 +205,7 @@ export default function MatchPlayer({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [videoRef, seekRelative, toggleFullscreen, togglePlayPause]);
 
   const handlePointerDown = (event) => {
     const bounds = playerRef.current?.getBoundingClientRect();
@@ -224,7 +287,7 @@ export default function MatchPlayer({
         className="player-shell relative w-full aspect-video overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-white/10"
         onClick={(event) => {
           if (companionOpen && event.target === videoRef.current) {
-            onToggleCompanion();
+            onCloseCompanion();
           }
         }}
       >
@@ -237,6 +300,8 @@ export default function MatchPlayer({
           preload="metadata"
           playsInline
           onTimeUpdate={onTimeUpdate}
+          onSeeking={onSeeking}
+          onSeeked={onSeeked}
         >
           <source src="/media/live-match.mp4" type="video/mp4" />
           Your browser does not support the video tag.
@@ -262,7 +327,8 @@ export default function MatchPlayer({
         <div
           ref={panelRef}
           aria-hidden={!companionOpen}
-          className={`${companionOpen ? "block" : "hidden"} lens-panel-shell absolute z-20`}
+          inert={!companionOpen ? "" : undefined}
+          className={`lens-panel-shell ${companionOpen ? "lens-panel-visible" : "lens-panel-hidden hidden"} ${autoNoteEvent ? "lens-note-mode" : ""} absolute z-20`}
           style={{
             left: panelPosition.left,
             top: panelPosition.top,
@@ -273,22 +339,29 @@ export default function MatchPlayer({
           {children && (
             <div
               className="h-full"
+              onPointerDown={(event) => {
+                if (
+                  !event.target.closest("[data-companion-close='true']") &&
+                  event.target.closest("[data-lens-drag-handle='true']")
+                ) {
+                  handlePanelPointerDown(event);
+                }
+              }}
               onPointerMove={handlePanelPointerMove}
               onPointerUp={() => { panelDragRef.current = null; }}
               onPointerCancel={() => { panelDragRef.current = null; }}
             >
-              {cloneElement(children, {
-                onPanelPointerDown: handlePanelPointerDown,
-                onClose: children.props.onClose || onToggleCompanion,
-              })}
+              {children}
             </div>
           )}
         </div>
 
-        {!companionOpen && <button
+        <button
           type="button"
+          tabIndex={companionOpen ? -1 : 0}
+          aria-hidden={companionOpen}
           aria-label="Open Live Lens companion. Click to open or drag to move. Use arrow keys to reposition."
-          aria-expanded={false}
+          aria-expanded={companionOpen}
           title="Click to open · drag to move"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -314,40 +387,88 @@ export default function MatchPlayer({
               toggleCompanionAtOrb();
             }
           }}
-          className="lens-orb absolute z-30 grid h-14 w-14 cursor-grab place-items-center overflow-hidden rounded-full bg-transparent p-0 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+          className={`lens-orb absolute z-30 grid h-14 w-14 cursor-grab place-items-center overflow-hidden rounded-full bg-transparent p-0 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${companionOpen ? "lens-orb-hidden" : "lens-orb-visible"}`}
           style={orbPosition ? { left: orbPosition.left, top: orbPosition.top } : { right: 18, top: 18 }}
         >
           <AiPet size={52} />
           <span className="sr-only">Live Lens</span>
-        </button>}
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-zinc-900/80 border border-zinc-800 rounded-lg text-sm">
         <div className="flex items-center gap-3">
           <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
           <div className="flex items-center gap-2">
-            <span className="text-zinc-400">Playback Time:</span>
+            <span className="text-zinc-400">Video time:</span>
             <span className="font-mono font-medium text-white tracking-wider text-base">
               {formatPlaybackTime(playbackTime)}
             </span>
-            <button
-              type="button"
-              onClick={() => seekRelative(60)}
-              title="Temporary helper: move timestamp forward by exactly 1 minute"
-              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-cyan-200 border border-zinc-700 hover:border-zinc-600 transition-colors cursor-pointer"
-            >
-              +1 min
-            </button>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-zinc-400">Official Match Minute:</span>
+          <span className="text-zinc-400">Match time:</span>
           <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-emerald-950/70 text-emerald-300 border border-emerald-700/60 font-mono tracking-wide shadow-sm">
             {currentMatchMinute}
           </span>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (!transcriptOpen && transcriptStatus === "idle") setTranscriptStatus("loading");
+            setTranscriptOpen((open) => !open);
+          }}
+          aria-expanded={transcriptOpen}
+          className="min-h-11 cursor-pointer rounded-md border border-zinc-700 px-3 text-xs text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+        >
+          {transcriptOpen ? "Hide transcript" : "Transcript"}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleAutomaticNotes}
+          aria-pressed={automaticNotesEnabled}
+          className={`min-h-11 cursor-pointer rounded-md border px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
+            automaticNotesEnabled
+              ? "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white"
+              : "border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          Match notes {automaticNotesEnabled ? "on" : "off"}
+        </button>
       </div>
+
+      {transcriptOpen && (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900/90 p-4" aria-label="Match transcript">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-white">Commentary transcript</h2>
+              <p className="mt-1 text-xs text-zinc-400">Choose a line to jump to that moment.</p>
+            </div>
+            <button type="button" onClick={() => setTranscriptOpen(false)} aria-label="Close transcript" className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg text-zinc-300 hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+            </button>
+          </div>
+          <div className="max-h-64 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+            {transcriptStatus === "loading" && <p className="text-sm text-zinc-300">Loading transcript…</p>}
+            {transcriptStatus === "missing" && <p className="text-sm leading-relaxed text-zinc-300">A transcript hasn’t been added for this match yet.</p>}
+            {transcriptStatus === "ready" && (
+              <ol className="space-y-1">
+                {transcriptCues.map((cue) => {
+                  const active = playbackTime >= cue.start && playbackTime < cue.end;
+                  return (
+                    <li key={cue.id}>
+                      <button type="button" onClick={() => { if (videoRef.current) videoRef.current.currentTime = cue.start; }} className={`flex w-full cursor-pointer gap-3 rounded-md px-2 py-2 text-left text-sm leading-relaxed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${active ? "bg-cyan-950/70 text-white" : "text-zinc-300 hover:bg-zinc-900"}`}>
+                        <span className="shrink-0 font-mono text-xs text-zinc-400">{formatPlaybackTime(cue.start)}</span>
+                        <span>{cue.text}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

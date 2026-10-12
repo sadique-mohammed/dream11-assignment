@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import MatchPlayer from "@/components/MatchPlayer";
 import CompanionPanel from "@/components/CompanionPanel";
 import EventMarkerTool from "@/components/EventMarkerTool";
+import EventTimeline from "@/components/EventTimeline";
 import { getMatchMinuteAtTime } from "@/lib/match-minute";
+import { getCuratedEvents } from "@/lib/events";
 
 export default function Home() {
   const videoRef = useRef(null);
+  const previousPlaybackTimeRef = useRef(null);
+  const curatedEvents = getCuratedEvents();
 
   // Playback state
   const [playbackTime, setPlaybackTime] = useState(0);
+  const [selectedEventId, setSelectedEventId] = useState(null);
 
   // Question & companion state
   const [question, setQuestion] = useState("");
@@ -20,12 +25,80 @@ export default function Home() {
   const [answerData, setAnswerData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [companionOpen, setCompanionOpen] = useState(false);
+  const [autoNoteEvent, setAutoNoteEvent] = useState(null);
+  const [automaticNotesEnabled, setAutomaticNotesEnabled] = useState(true);
   const [eventMarkerOpen, setEventMarkerOpen] = useState(false);
 
-  // Update playback time on video timeupdate (~4Hz)
+  const showAutomaticNote = (event) => {
+    setSelectedEventId(event.id);
+    setQuestion("");
+    setAnswerData(null);
+    setStatus("idle");
+    setAutoNoteEvent(event);
+    setCompanionOpen(true);
+  };
+
+  // Show a note when playback crosses an event timestamp.
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      setPlaybackTime(videoRef.current.currentTime);
+    const video = videoRef.current;
+    if (!video) return;
+    const current = video.currentTime;
+    const previous = previousPlaybackTimeRef.current;
+    setPlaybackTime(current);
+    previousPlaybackTimeRef.current = current;
+
+    // Ignore initial restores and large jumps; only notify while naturally watching.
+    if (!automaticNotesEnabled || video.paused || previous === null || current <= previous || current - previous > 3) return;
+
+    const crossedEvent = curatedEvents.find((event) =>
+      previous < event.videoTimeSeconds && current >= event.videoTimeSeconds
+    );
+    if (crossedEvent) showAutomaticNote(crossedEvent);
+  };
+
+  const handleSeeking = () => {
+    previousPlaybackTimeRef.current = null;
+  };
+
+  const handleSeeked = () => {
+    previousPlaybackTimeRef.current = videoRef.current?.currentTime ?? null;
+  };
+
+  const closeCompanion = useCallback(() => {
+    setAutoNoteEvent(null);
+    setCompanionOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!autoNoteEvent) return undefined;
+    const timer = window.setTimeout(() => {
+      setAutoNoteEvent(null);
+      setCompanionOpen(false);
+    }, 20000);
+    return () => window.clearTimeout(timer);
+  }, [autoNoteEvent]);
+
+  const handleShowMoment = (event) => {
+    if (!event) return;
+    showAutomaticNote(event);
+  };
+
+  const handleAskMore = (event) => {
+    setSelectedEventId(event.id);
+    setQuestion("Can you explain this moment?");
+    setStatus("idle");
+    setAnswerData(null);
+    setAutoNoteEvent(null);
+    setCompanionOpen(true);
+  };
+
+  // Seek video directly to a specific timestamp
+  const handleJumpToTime = (seconds) => {
+    if (videoRef.current && typeof seconds === "number" && !isNaN(seconds)) {
+      const duration = videoRef.current.duration || 9460;
+      const target = Math.max(0, Math.min(seconds, duration));
+      videoRef.current.currentTime = target;
+      setPlaybackTime(target);
     }
   };
 
@@ -45,26 +118,35 @@ export default function Home() {
     setStatus("loading");
     setErrorMessage(null);
 
-    // Simulate short network turn to display loading state then render placeholder answer
+    // Simulate short network turn to display loading state then render answer
     setTimeout(() => {
       const isSimple = explanationLevel === "simple";
+      const selectedEvent = curatedEvents.find((ev) => ev.id === selectedEventId);
+
       setAnswerData({
         question: trimmed,
         summary: isSimple
-          ? "Demo preview: Live Lens will explain what happened using verified match facts and football rules."
-          : "Demo preview: Live Lens will connect this moment to verified match facts, explain the relevant rule, and say when something is uncertain.",
+          ? selectedEvent?.quickNote || "I don’t have a verified note for this moment yet. Try asking about a marked match moment."
+          : selectedEvent?.description || "I don’t have a verified note for this moment yet. Try asking about a marked match moment.",
         confirmedFacts: [
-          `Captured at ${Math.floor(capturedSec)}s (Match minute: ${getMatchMinuteAtTime(capturedSec)})`,
-          "Event timeline links in Part 3",
+          ...(selectedEvent
+            ? [
+                `${selectedEvent.title} · ${selectedEvent.matchMinute}`,
+                ...selectedEvent.facts.slice(0, 2),
+              ]
+            : []),
         ],
-        ruleExplanation:
-          "The relevant rule will be shown here in plain language.",
-        uncertainty:
-          "We can’t know what the referee said or intended unless a reliable source confirms it.",
-        sources: [
-          "FIFA Official Match Report #57",
-          "IFAB Laws of the Game 2022/23",
-        ],
+        ruleExplanation: selectedEvent?.ruleTags?.includes("penalty_kick")
+          ? "A foul by a defending team inside its own penalty area can lead to a penalty kick."
+          : selectedEvent?.ruleTags?.includes("free_kick")
+            ? "A free kick restarts play after a foul. The team can pass instead of shooting."
+            : selectedEvent?.ruleTags?.includes("yellow_card")
+              ? "A yellow card is a warning. A player who receives a second yellow in the same match is sent off."
+              : null,
+        uncertainty: selectedEvent?.uncertainty?.length > 0
+          ? selectedEvent.uncertainty[0]
+          : null,
+        sources: selectedEvent?.sources || [],
       });
       setStatus("answered");
     }, 600);
@@ -90,11 +172,11 @@ export default function Home() {
             <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
               Live Lens
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-900/60 text-blue-300 border border-blue-700/60">
-                Part 2 Interface
+                Match companion
               </span>
             </h1>
             <p className="text-xs text-zinc-400">
-              Interactive match player & rules companion for new football viewers
+              Brief explanations for moments that are hard to follow
             </p>
           </div>
         </div>
@@ -125,8 +207,20 @@ export default function Home() {
           playbackTime={playbackTime}
           matchMinute={getMatchMinuteAtTime(playbackTime)}
           onTimeUpdate={handleTimeUpdate}
+          onSeeking={handleSeeking}
+          onSeeked={handleSeeked}
           companionOpen={companionOpen}
           onToggleCompanion={() => setCompanionOpen((open) => !open)}
+          onCloseCompanion={closeCompanion}
+          autoNoteEvent={autoNoteEvent}
+          onToggleAutomaticNotes={() => {
+            if (automaticNotesEnabled) {
+              setAutoNoteEvent(null);
+              setCompanionOpen(false);
+            }
+            setAutomaticNotesEnabled(!automaticNotesEnabled);
+          }}
+          automaticNotesEnabled={automaticNotesEnabled}
         >
           <CompanionPanel
             status={status}
@@ -139,9 +233,27 @@ export default function Home() {
             errorMessage={errorMessage}
             onSubmit={handleQuestionSubmit}
             onReset={handleReset}
-            onClose={() => setCompanionOpen(false)}
+            autoNoteEvent={autoNoteEvent}
+            onAskAboutMoment={handleAskMore}
+            onClose={closeCompanion}
           />
         </MatchPlayer>
+
+        <details className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-zinc-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+            Browse key match moments <span className="ml-1 text-xs text-zinc-500">{curatedEvents.length}</span>
+          </summary>
+          <div className="border-t border-zinc-800 px-3 pb-3">
+            <EventTimeline
+              events={curatedEvents}
+              selectedEventId={selectedEventId}
+              onSelectEvent={setSelectedEventId}
+              onJumpToTime={handleJumpToTime}
+              onShowMoment={handleShowMoment}
+            />
+          </div>
+        </details>
+
         {process.env.NODE_ENV === "development" && (
           <div className={eventMarkerOpen ? "block" : "hidden"}>
             <EventMarkerTool videoRef={videoRef} playbackTime={playbackTime} />
