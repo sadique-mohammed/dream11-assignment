@@ -1,6 +1,7 @@
 "use client";
 
 import { formatPlaybackTime } from "@/lib/format-time";
+import { getMatchMinuteAtTime } from "@/lib/match-minute";
 
 export default function AnswerCard({
   answerData,
@@ -21,12 +22,17 @@ export default function AnswerCard({
 
       {/* Captured Metadata Header */}
       <div className="flex items-center justify-between gap-2 p-2.5 bg-zinc-900/50 border border-white/15 rounded-lg text-xs backdrop-blur-sm">
-        <div className="flex items-center gap-1.5 text-zinc-300">
-          <span className="text-zinc-500">Captured:</span>
-          <span className="font-mono font-medium text-white">
-            {formatPlaybackTime(capturedTimestamp)}
+        <div className="flex items-center gap-2 text-zinc-300">
+          <div className="flex items-center gap-1.5">
+            <span className="text-zinc-500">Captured:</span>
+            <span className="font-mono font-medium text-white">
+              {formatPlaybackTime(capturedTimestamp)}
+            </span>
+            <span className="text-zinc-500">({Math.floor(capturedTimestamp)}s)</span>
+          </div>
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-700/60 font-mono text-[11px]">
+            {getMatchMinuteAtTime(capturedTimestamp)}
           </span>
-          <span className="text-zinc-500">({Math.floor(capturedTimestamp)}s)</span>
         </div>
         <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 capitalize text-[11px]">
           {explanationLevel}

@@ -50,3 +50,15 @@ body {
 .lens-orb:active {
   cursor: grabbing;
 }
+
+.marker-button {
+  @apply cursor-pointer rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-200 hover:border-zinc-500 hover:bg-zinc-700;
+}
+
+.marker-button:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.marker-primary {
+  @apply border-blue-500/50 bg-blue-600 text-white hover:bg-blue-500;
+}

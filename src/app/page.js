@@ -3,6 +3,8 @@
 import { useState, useRef } from "react";
 import MatchPlayer from "@/components/MatchPlayer";
 import CompanionPanel from "@/components/CompanionPanel";
+import EventMarkerTool from "@/components/EventMarkerTool";
+import { getMatchMinuteAtTime } from "@/lib/match-minute";
 
 export default function Home() {
   const videoRef = useRef(null);
@@ -18,6 +20,7 @@ export default function Home() {
   const [answerData, setAnswerData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [companionOpen, setCompanionOpen] = useState(false);
+  const [eventMarkerOpen, setEventMarkerOpen] = useState(false);
 
   // Update playback time on video timeupdate (~4Hz)
   const handleTimeUpdate = () => {
@@ -51,7 +54,7 @@ export default function Home() {
           ? "Demo preview: Live Lens will explain what happened using verified match facts and football rules."
           : "Demo preview: Live Lens will connect this moment to verified match facts, explain the relevant rule, and say when something is uncertain.",
         confirmedFacts: [
-          `Captured at ${Math.floor(capturedSec)}s`,
+          `Captured at ${Math.floor(capturedSec)}s (Match minute: ${getMatchMinuteAtTime(capturedSec)})`,
           "Event timeline links in Part 3",
         ],
         ruleExplanation:
@@ -105,9 +108,22 @@ export default function Home() {
       </header>
 
       <div className="player-stage">
+        {process.env.NODE_ENV === "development" && (
+          <div className="mb-3">
+            <button
+              type="button"
+              aria-expanded={eventMarkerOpen}
+              onClick={() => setEventMarkerOpen((open) => !open)}
+              className="cursor-pointer rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-300 hover:border-zinc-600 hover:text-white"
+            >
+              {eventMarkerOpen ? "Close event marker" : "Developer: mark event"}
+            </button>
+          </div>
+        )}
         <MatchPlayer
           videoRef={videoRef}
           playbackTime={playbackTime}
+          matchMinute={getMatchMinuteAtTime(playbackTime)}
           onTimeUpdate={handleTimeUpdate}
           companionOpen={companionOpen}
           onToggleCompanion={() => setCompanionOpen((open) => !open)}
@@ -123,8 +139,14 @@ export default function Home() {
             errorMessage={errorMessage}
             onSubmit={handleQuestionSubmit}
             onReset={handleReset}
+            onClose={() => setCompanionOpen(false)}
           />
         </MatchPlayer>
+        {process.env.NODE_ENV === "development" && (
+          <div className={eventMarkerOpen ? "block" : "hidden"}>
+            <EventMarkerTool videoRef={videoRef} playbackTime={playbackTime} />
+          </div>
+        )}
       </div>
     </main>
   );

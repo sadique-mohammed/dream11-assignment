@@ -2,6 +2,7 @@
 
 import { cloneElement, useEffect, useRef, useState } from "react";
 import { formatPlaybackTime } from "@/lib/format-time";
+import { getMatchMinuteAtTime } from "@/lib/match-minute";
 import AiPet from "./AiPet";
 
 function getPanelPosition(bounds, petPosition) {
@@ -39,8 +40,10 @@ export default function MatchPlayer({
   onTimeUpdate,
   companionOpen,
   onToggleCompanion,
+  matchMinute,
   children,
 }) {
+  const currentMatchMinute = matchMinute || getMatchMinuteAtTime(playbackTime);
   const playerRef = useRef(null);
   const dragRef = useRef(null);
   const panelDragRef = useRef(null);
@@ -102,9 +105,17 @@ export default function MatchPlayer({
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Do not capture key events when typing in inputs or textareas
-      const tag = document.activeElement?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea") return;
+      // Do not capture key events when focus is on interactive controls
+      const active = document.activeElement;
+      if (
+        active &&
+        active !== document.body &&
+        active !== document.documentElement &&
+        active !== videoRef.current &&
+        active.closest("button, input, textarea, select, a, [role='button'], [role='slider'], [contenteditable='true']")
+      ) {
+        return;
+      }
 
       if (e.code === "Space") {
         e.preventDefault();
@@ -268,6 +279,7 @@ export default function MatchPlayer({
             >
               {cloneElement(children, {
                 onPanelPointerDown: handlePanelPointerDown,
+                onClose: children.props.onClose || onToggleCompanion,
               })}
             </div>
           )}
@@ -318,13 +330,21 @@ export default function MatchPlayer({
             <span className="font-mono font-medium text-white tracking-wider text-base">
               {formatPlaybackTime(playbackTime)}
             </span>
+            <button
+              type="button"
+              onClick={() => seekRelative(60)}
+              title="Temporary helper: move timestamp forward by exactly 1 minute"
+              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-cyan-300 hover:text-cyan-200 border border-zinc-700 hover:border-zinc-600 transition-colors cursor-pointer"
+            >
+              +1 min
+            </button>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-zinc-400">Official Match Minute:</span>
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
-            Unavailable (Part 3)
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold bg-emerald-950/70 text-emerald-300 border border-emerald-700/60 font-mono tracking-wide shadow-sm">
+            {currentMatchMinute}
           </span>
         </div>
       </div>

@@ -2,6 +2,8 @@
 
 An AI companion for understanding football moments. Watch the Argentina vs Netherlands 2022 World Cup quarter-final, ask questions about what's happening, and get evidence-grounded explanations.
 
+> **Note on AI status:** The AI endpoint is **not connected yet** (wired in Part 5). Question submissions currently demonstrate the interface with structured placeholder responses showing moment capture and layout. Verified event data and the Gemini API are connected in later stages.
+
 ## Prerequisites
 
 - **Node.js** 20+ and npm
@@ -48,6 +50,16 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Mapping match minutes to video time (development only)
+
+While running `npm run dev`, open **Developer: mark event** above the player. At each match-clock point you want to map:
+
+1. Enter only the match-clock label, such as `12`, `45+2`, `HT`, `ET`, or `Penalties`.
+2. Seek the player to the corresponding point in the broadcast and click **Save current time**.
+3. The app immediately saves the label and exact `video.currentTime` to `project/data/match-minute-markers.json`. Marks remain after refresh and can be removed from the list.
+
+This file is a time map only; it does not describe incidents. Match clock and video playback time remain separate because broadcast introductions, halftime, replays, and extra time make a fixed conversion inaccurate. The developer marker is not shown in production mode. The local API writes to the project folder, so this persistence is intended for local development.
 
 ## What's ignored by Git
 

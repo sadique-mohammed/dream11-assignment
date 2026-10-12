@@ -21,6 +21,7 @@ export default function CompanionPanel({
   onSubmit,
   onReset,
   onPanelPointerDown,
+  onClose,
 }) {
   const handleSuggestedClick = (text) => {
     // Fill the input only; do NOT auto-submit (per viewer preference)
@@ -64,6 +65,20 @@ export default function CompanionPanel({
               More detail
             </button>
           </div>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close or minimise companion"
+              title="Close or minimise"
+              className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition-colors cursor-pointer"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
