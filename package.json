@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "validate:events": "node scripts/validate-events.js"
   },
   "dependencies": {
     "@lottiefiles/dotlottie-react": "^0.20.0",
