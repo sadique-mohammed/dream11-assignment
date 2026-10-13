@@ -13,8 +13,6 @@ export default function CompanionPanel({
   status,
   question,
   setQuestion,
-  explanationLevel,
-  setExplanationLevel,
   capturedTimestamp,
   answerData,
   errorMessage,
@@ -49,31 +47,6 @@ export default function CompanionPanel({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
-          {!autoNoteEvent && <div className="flex items-center bg-zinc-950 p-1 rounded-lg border border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setExplanationLevel("simple")}
-              className={`px-2 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
-                explanationLevel === "simple"
-                  ? "bg-zinc-800 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              Simple
-            </button>
-            <button
-              type="button"
-              onClick={() => setExplanationLevel("detailed")}
-              className={`px-2 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
-                explanationLevel === "detailed"
-                  ? "bg-zinc-800 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              More detail
-            </button>
-          </div>}
-
           {onClose && (
             <button
               type="button"
@@ -100,24 +73,85 @@ export default function CompanionPanel({
       <div ref={contentRef} className="pt-3 flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {autoNoteEvent && status === "idle" ? (
           <div className="flex h-full flex-col gap-3">
-            <div className="flex items-center justify-between gap-2 text-xs text-cyan-200">
-              <span>{autoNoteEvent.matchMinute}</span>
-              <span className="text-zinc-400">Quick update</span>
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60">
+                  {autoNoteEvent.matchMinute}
+                </span>
+                {autoNoteEvent.type === "goal" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-950 text-green-300 border border-green-800/80">
+                    ⚽ GOAL
+                  </span>
+                )}
+                {autoNoteEvent.type === "yellow_card" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-950 text-yellow-300 border border-yellow-800/80">
+                    🟨 CAUTION
+                  </span>
+                )}
+                {autoNoteEvent.type === "red_card" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-950 text-red-300 border border-red-800/80">
+                    🟥 RED CARD
+                  </span>
+                )}
+                {autoNoteEvent.type === "penalty" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-950 text-purple-300 border border-purple-800/80">
+                    ⚠️ PENALTY
+                  </span>
+                )}
+                {autoNoteEvent.type === "shootout_kick" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-950 text-sky-300 border border-sky-800/80">
+                    🎯 SHOOTOUT
+                  </span>
+                )}
+                {autoNoteEvent.type === "break" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/80">
+                    ⏱️ INTERVAL
+                  </span>
+                )}
+              </div>
+              <span className="text-zinc-400 text-[11px] shrink-0">Match note</span>
             </div>
-            <h3 className="text-base font-semibold leading-snug text-white">
+
+            <h3 className="text-sm font-semibold leading-snug text-white">
               {autoNoteEvent.title}
             </h3>
-              <p className="text-sm leading-relaxed text-zinc-100">
-                {autoNoteEvent.quickNote || autoNoteEvent.description}
-              </p>
-            <div className="mt-auto flex items-center justify-between gap-3 border-t border-zinc-800 pt-3">
-              <span className="text-xs text-zinc-400">The match keeps playing.</span>
+
+            <p className="text-xs leading-relaxed text-zinc-200">
+              {autoNoteEvent.quickNote || autoNoteEvent.description}
+            </p>
+
+            {/* Minute-to-video mapping caveat */}
+            <div className={`mt-1 flex items-start gap-1.5 rounded-lg border px-2.5 py-2 text-[11px] leading-relaxed ${
+              autoNoteEvent.isCurated
+                ? "bg-emerald-950/30 border-emerald-800/50 text-emerald-300/90"
+                : "bg-amber-950/30 border-amber-800/50 text-amber-300/90"
+            }`}>
+              <span className="shrink-0 text-xs">
+                {autoNoteEvent.isCurated ? "✓" : "⚡"}
+              </span>
+              <span>
+                {autoNoteEvent.mappingNote || "Mapped from StatsBomb feed (approx. ±15s from broadcast clock)"}
+              </span>
+            </div>
+
+            <div className="mt-auto flex items-center justify-between gap-2 border-t border-zinc-800 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setQuestion(autoNoteEvent.title || "Can you explain this moment?");
+                  onReset();
+                }}
+                className="text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              >
+                Custom question…
+              </button>
               <button
                 type="button"
                 onClick={() => onAskAboutMoment(autoNoteEvent)}
-                className="min-h-11 cursor-pointer rounded-lg bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                className="min-h-9 cursor-pointer rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 transition-all flex items-center gap-1.5"
               >
-                Ask
+                <span>Explain with AI</span>
+                <span aria-hidden="true">→</span>
               </button>
             </div>
           </div>
@@ -171,15 +205,20 @@ export default function CompanionPanel({
         )}
 
         {status === "loading" && (
-          <div className="py-12 flex flex-col items-center justify-center text-center gap-3">
-            <div className="relative w-10 h-10">
-              <div className="absolute inset-0 rounded-full border-2 border-zinc-800 border-t-blue-500 animate-spin" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-zinc-200">
-                Thinking…
-              </p>
-            </div>
+          <div className="flex h-full flex-col gap-3 py-2">
+            {autoNoteEvent && (
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                <p className="text-[11px] text-cyan-200">{autoNoteEvent.matchMinute} · Match update</p>
+                <h3 className="mt-1 text-sm font-semibold text-white">{autoNoteEvent.title}</h3>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-300">
+                  {autoNoteEvent.quickNote || autoNoteEvent.description}
+                </p>
+              </div>
+            )}
+            <p className="flex items-center gap-2 text-xs text-zinc-300">
+              <span className="h-3 w-3 animate-spin rounded-full border border-zinc-600 border-t-cyan-300" />
+              {autoNoteEvent ? "Checking the match feed…" : "Thinking…"}
+            </p>
           </div>
         )}
 
@@ -187,7 +226,7 @@ export default function CompanionPanel({
           <AnswerCard
             answerData={answerData}
             capturedTimestamp={capturedTimestamp}
-            explanationLevel={explanationLevel}
+            explanationLevel="simple"
             onReset={onReset}
           />
         )}

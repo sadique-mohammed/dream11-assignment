@@ -4,15 +4,17 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import MatchPlayer from "@/components/MatchPlayer";
 import CompanionPanel from "@/components/CompanionPanel";
 import EventMarkerTool from "@/components/EventMarkerTool";
-import EventTimeline from "@/components/EventTimeline";
-import ContextInspector from "@/components/ContextInspector";
 import { getMatchMinuteAtTime } from "@/lib/match-minute";
 import { getCuratedEvents } from "@/lib/events";
+import { getFeedTriggers } from "@/lib/feed-triggers";
+import { formatPlaybackTime } from "@/lib/format-time";
 
 export default function Home() {
   const videoRef = useRef(null);
   const previousPlaybackTimeRef = useRef(null);
   const curatedEvents = getCuratedEvents();
+  const feedTriggers = getFeedTriggers();
+  const seenTriggerIdsRef = useRef(new Set());
 
   // Playback state
   const [playbackTime, setPlaybackTime] = useState(0);
@@ -20,11 +22,9 @@ export default function Home() {
 
   // Question & companion state
   const [question, setQuestion] = useState("");
-  const [explanationLevel, setExplanationLevel] = useState("simple"); // 'simple' | 'detailed'
   const [status, setStatus] = useState("idle"); // 'idle' | 'loading' | 'answered' | 'error'
   const [capturedTimestamp, setCapturedTimestamp] = useState(null);
   const [answerData, setAnswerData] = useState(null);
-  const [retrievedContext, setRetrievedContext] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [companionOpen, setCompanionOpen] = useState(false);
   const [autoNoteEvent, setAutoNoteEvent] = useState(null);
@@ -32,39 +32,33 @@ export default function Home() {
   const [eventMarkerOpen, setEventMarkerOpen] = useState(false);
 
   const showAutomaticNote = (event) => {
-    setSelectedEventId(event.id);
-    setQuestion("");
+    const eventId = event.curatedEventId || (event.isCurated ? event.id : null);
+    const timeSec = event.videoTimeSeconds;
+    const automaticQuestion = event.player
+      ? `Explain what happened to ${event.player} at ${event.matchMinute} in simple terms.`
+      : `Explain this match update in simple terms: ${event.title}.`;
+    setSelectedEventId(eventId);
+    setQuestion(automaticQuestion);
     setAnswerData(null);
-    setStatus("idle");
+    setCapturedTimestamp(timeSec);
+    setStatus("loading");
     setAutoNoteEvent(event);
     setCompanionOpen(true);
+
+    submitQuestionToApi({
+      questionText: automaticQuestion,
+      timeSec,
+      eventId,
+      level: "simple",
+      automaticTrigger: true,
+      triggerId: event.id,
+    });
   };
 
-  const getBreakStatusNote = (matchMinute, videoTimeSeconds) => {
-    const notes = {
-      HT: {
-        title: "Half-time",
-        quickNote: "Half-time: Argentina lead the Netherlands 1–0. Nahuel Molina scored in the first half.",
-      },
-      "90' (ET Break)": {
-        title: "Extra-time break",
-        quickNote: "The match is 2–2 after 90 minutes. The teams are taking a short break before extra time.",
-      },
-      Penalties: {
-        title: "Penalty shootout",
-        quickNote: "The match is still 2–2 after extra time. Penalties will decide the winner.",
-      },
-    };
-    const note = notes[matchMinute];
-    return note ? {
-      id: `break-${matchMinute}`,
-      matchMinute,
-      videoTimeSeconds,
-      ...note,
-    } : null;
-  };
-
-  // Show a note when playback crosses an event timestamp.
+  // Show a note when playback crosses a significant StatsBomb or curated action.
+  // - Detects forward playback only
+  // - Ignores seeks/scrubbing (natural playback jumps <= 3s)
+  // - Prevents duplicate popups on replay via seenTriggerIdsRef
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -73,26 +67,31 @@ export default function Home() {
     setPlaybackTime(current);
     previousPlaybackTimeRef.current = current;
 
-    // Ignore initial restores and large jumps; only notify while naturally watching.
-    if (!automaticNotesEnabled || video.paused || previous === null || current <= previous || current - previous > 3) return;
-
-    const previousMatchMinute = getMatchMinuteAtTime(previous, false);
-    const currentMatchMinute = getMatchMinuteAtTime(current, false);
-    if (previousMatchMinute !== currentMatchMinute) {
-      const breakNote = getBreakStatusNote(currentMatchMinute, current);
-      if (breakNote) {
-        showAutomaticNote(breakNote);
-        return;
-      }
+    // Ignore initial restores, paused playback, backward motion, and large scrubbing jumps (> 3s)
+    if (
+      !automaticNotesEnabled ||
+      video.paused ||
+      previous === null ||
+      current <= previous ||
+      current - previous > 3
+    ) {
+      return;
     }
 
-    const crossedEvent = curatedEvents.find((event) =>
-      previous < event.videoTimeSeconds && current >= event.videoTimeSeconds
+    // Detect if forward playback crossed any significant feed action or interval
+    const crossedTrigger = feedTriggers.find(
+      (t) => previous < t.videoTimeSeconds && current >= t.videoTimeSeconds
     );
-    if (crossedEvent) showAutomaticNote(crossedEvent);
+
+    if (crossedTrigger && !seenTriggerIdsRef.current.has(crossedTrigger.id)) {
+      // Prevent duplicate popups on replay
+      seenTriggerIdsRef.current.add(crossedTrigger.id);
+      showAutomaticNote(crossedTrigger);
+    }
   };
 
   const handleSeeking = () => {
+    // Clear previous playback time so scrubbing jumps do not trigger notes
     previousPlaybackTimeRef.current = null;
   };
 
@@ -116,7 +115,7 @@ export default function Home() {
   const closeCompanion = useCallback(() => {
     setAutoNoteEvent(null);
     setCompanionOpen(false);
-  }, []);
+  }, [setAutoNoteEvent, setCompanionOpen]);
 
   useEffect(() => {
     if (!autoNoteEvent) return undefined;
@@ -127,18 +126,32 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [autoNoteEvent]);
 
-  const handleShowMoment = (event) => {
-    if (!event) return;
-    showAutomaticNote(event);
-  };
+  const handleAskMore = async (event) => {
+    const targetEvent = event || autoNoteEvent;
+    if (!targetEvent) return;
 
-  const handleAskMore = (event) => {
-    setSelectedEventId(event.id);
-    setQuestion("Can you explain this moment?");
-    setStatus("idle");
-    setAnswerData(null);
+    const defaultQ = targetEvent.player
+      ? `Can you explain what happened with ${targetEvent.player} at ${targetEvent.matchMinute}?`
+      : targetEvent.title
+      ? `Can you explain what happened during "${targetEvent.title}"?`
+      : "Can you explain this moment in the match?";
+
+    const eventId = targetEvent.curatedEventId || (targetEvent.isCurated ? targetEvent.id : null);
+    const timeSec = targetEvent.videoTimeSeconds || playbackTime;
+
+    setSelectedEventId(eventId);
+    setQuestion(defaultQ);
     setAutoNoteEvent(null);
     setCompanionOpen(true);
+    setCapturedTimestamp(timeSec);
+
+    // Call Gemini API immediately
+    await submitQuestionToApi({
+      questionText: defaultQ,
+      timeSec,
+      eventId,
+      level: "simple",
+    });
   };
 
   // Seek video directly to a specific timestamp, optionally playing through the replay passage
@@ -154,8 +167,21 @@ export default function Home() {
     }
   };
 
+  // Demo check: start 10 seconds before a feed timestamp and let playback trigger the AI note.
+  const handleTestFeedTrigger = (triggerId) => {
+    const trigger = feedTriggers.find((t) => t.id === triggerId);
+    if (!trigger || !videoRef.current) return;
+    // Allow re-testing this trigger by clearing it from the seen set
+    seenTriggerIdsRef.current.delete(trigger.id);
+    const target = Math.max(0, trigger.videoTimeSeconds - 10);
+    videoRef.current.currentTime = target;
+    setPlaybackTime(target);
+    previousPlaybackTimeRef.current = target;
+    videoRef.current.play?.().catch(() => {});
+  };
+
   // Submit question to server endpoint /api/ask, which computes context and evidence server-side
-  const submitQuestionToApi = async ({ questionText, timeSec, eventId, level }) => {
+  const submitQuestionToApi = async ({ questionText, timeSec, eventId, level, automaticTrigger = false, triggerId = null }) => {
     setStatus("loading");
     setErrorMessage(null);
     try {
@@ -167,6 +193,8 @@ export default function Home() {
           playbackTimeSec: timeSec,
           selectedEventId: eventId,
           explanationLevel: level,
+          automaticTrigger,
+          triggerId,
         }),
       });
 
@@ -177,7 +205,6 @@ export default function Home() {
 
       const data = await res.json();
       setAnswerData(data);
-      setRetrievedContext(data.context || null);
       setStatus("answered");
     } catch (err) {
       console.error("Error submitting question to /api/ask:", err);
@@ -186,7 +213,7 @@ export default function Home() {
     }
   };
 
-  const handleQuestionSubmit = async (e, overrideLevel = null) => {
+  const handleQuestionSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     const trimmed = question.trim();
     if (!trimmed) return;
@@ -197,27 +224,12 @@ export default function Home() {
     }
     setCapturedTimestamp(capturedSec);
 
-    const level = overrideLevel || explanationLevel;
     await submitQuestionToApi({
       questionText: trimmed,
       timeSec: capturedSec,
       eventId: selectedEventId,
-      level,
+      level: "simple",
     });
-  };
-
-  const handleExplanationLevelChange = (newLevel) => {
-    setExplanationLevel(newLevel);
-    // If currently displaying an answer, re-request from /api/ask with the new level
-    if (status === "answered" && question.trim()) {
-      const capturedSec = capturedTimestamp !== null ? capturedTimestamp : playbackTime;
-      submitQuestionToApi({
-        questionText: question.trim(),
-        timeSec: capturedSec,
-        eventId: selectedEventId,
-        level: newLevel,
-      });
-    }
   };
 
   const handleReset = () => {
@@ -226,44 +238,6 @@ export default function Home() {
     setAnswerData(null);
     setCapturedTimestamp(null);
     setErrorMessage(null);
-  };
-
-  // Acceptance test runner for ContextInspector presets
-  const handleRunPreset = async (presetKey) => {
-    let presetTime = 0;
-    let presetEventId = null;
-    let presetQuestion = "";
-
-    if (presetKey === "known_event") {
-      presetTime = 5009.66;
-      presetEventId = "arg-penalty-73";
-      presetQuestion = "Why did Argentina get a penalty kick?";
-    } else if (presetKey === "unannotated_time") {
-      presetTime = 2000;
-      presetEventId = null;
-      presetQuestion = "What happened in this passage of play?";
-    } else if (presetKey === "general_rule") {
-      presetTime = 2000;
-      presetEventId = null;
-      presetQuestion = "What is the offside rule in football?";
-    } else if (presetKey === "shootout_event") {
-      presetTime = 9318.0;
-      presetEventId = "dumfries-dismissal-shootout";
-      presetQuestion = "Why was Dumfries sent off with a red card after the shootout?";
-    }
-
-    handleJumpToTime(presetTime);
-    setSelectedEventId(presetEventId);
-    setQuestion(presetQuestion);
-    setCapturedTimestamp(presetTime);
-    setCompanionOpen(true);
-
-    await submitQuestionToApi({
-      questionText: presetQuestion,
-      timeSec: presetTime,
-      eventId: presetEventId,
-      level: explanationLevel,
-    });
   };
 
   return (
@@ -296,8 +270,8 @@ export default function Home() {
       </header>
 
       <div className="player-stage">
-        {process.env.NODE_ENV === "development" && (
-          <div className="mb-3">
+        <div className="mb-3 flex flex-wrap items-center gap-2.5">
+          {process.env.NODE_ENV === "development" && (
             <button
               type="button"
               aria-expanded={eventMarkerOpen}
@@ -306,8 +280,28 @@ export default function Home() {
             >
               {eventMarkerOpen ? "Close event marker" : "Developer: mark event"}
             </button>
-          </div>
-        )}
+          )}
+          <select
+            aria-label="Test a match feed trigger"
+            defaultValue=""
+            onChange={(e) => {
+              if (e.target.value) {
+                handleTestFeedTrigger(e.target.value);
+                e.target.value = "";
+              }
+            }}
+            className="cursor-pointer rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-cyan-300 hover:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-cyan-300"
+          >
+            <option value="" disabled>
+              Demo: test AI popup (starts 10s before)…
+            </option>
+            {feedTriggers.map((t) => (
+              <option key={t.id} value={t.id}>
+                {formatPlaybackTime(t.videoTimeSeconds)} [{t.matchMinute}] {t.title}
+              </option>
+            ))}
+          </select>
+        </div>
         <MatchPlayer
           videoRef={videoRef}
           playbackTime={playbackTime}
@@ -332,8 +326,6 @@ export default function Home() {
             status={status}
             question={question}
             setQuestion={setQuestion}
-            explanationLevel={explanationLevel}
-            setExplanationLevel={handleExplanationLevelChange}
             capturedTimestamp={capturedTimestamp}
             answerData={answerData}
             errorMessage={errorMessage}
@@ -344,27 +336,6 @@ export default function Home() {
             onClose={closeCompanion}
           />
         </MatchPlayer>
-
-        <details className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/40">
-          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-zinc-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
-            Browse key match moments <span className="ml-1 text-xs text-zinc-500">{curatedEvents.length}</span>
-          </summary>
-          <div className="border-t border-zinc-800 px-3 pb-3">
-            <EventTimeline
-              events={curatedEvents}
-              selectedEventId={selectedEventId}
-              onSelectEvent={setSelectedEventId}
-              onJumpToTime={handleJumpToTime}
-              onShowMoment={handleShowMoment}
-            />
-          </div>
-        </details>
-
-        {/* Development Context Inspector */}
-        <ContextInspector
-          context={retrievedContext}
-          onRunPreset={handleRunPreset}
-        />
 
         {process.env.NODE_ENV === "development" && (
           <div className={eventMarkerOpen ? "block" : "hidden"}>
