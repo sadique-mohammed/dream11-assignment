@@ -3,10 +3,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import MatchPlayer from "@/components/MatchPlayer";
 import CompanionPanel from "@/components/CompanionPanel";
-import EventMarkerTool from "@/components/EventMarkerTool";
 import { getMatchMinuteAtTime } from "@/lib/match-minute";
 import { getCuratedEvents } from "@/lib/events";
-import { getFeedTriggers } from "@/lib/feed-triggers";
+import { findCrossedTrigger, getFeedTriggers } from "@/lib/feed-triggers";
 import { formatPlaybackTime } from "@/lib/format-time";
 
 export default function Home() {
@@ -16,20 +15,17 @@ export default function Home() {
   const feedTriggers = getFeedTriggers();
   const seenTriggerIdsRef = useRef(new Set());
 
-  // Playback state
   const [playbackTime, setPlaybackTime] = useState(0);
   const [selectedEventId, setSelectedEventId] = useState(null);
 
-  // Question & companion state
   const [question, setQuestion] = useState("");
-  const [status, setStatus] = useState("idle"); // 'idle' | 'loading' | 'answered' | 'error'
+  const [status, setStatus] = useState("idle");
   const [capturedTimestamp, setCapturedTimestamp] = useState(null);
   const [answerData, setAnswerData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [companionOpen, setCompanionOpen] = useState(false);
   const [autoNoteEvent, setAutoNoteEvent] = useState(null);
   const [automaticNotesEnabled, setAutomaticNotesEnabled] = useState(true);
-  const [eventMarkerOpen, setEventMarkerOpen] = useState(false);
 
   const showAutomaticNote = (event) => {
     const eventId = event.curatedEventId || (event.isCurated ? event.id : null);
@@ -49,16 +45,11 @@ export default function Home() {
       questionText: automaticQuestion,
       timeSec,
       eventId,
-      level: "simple",
       automaticTrigger: true,
       triggerId: event.id,
     });
   };
 
-  // Show a note when playback crosses a significant StatsBomb or curated action.
-  // - Detects forward playback only
-  // - Ignores seeks/scrubbing (natural playback jumps <= 3s)
-  // - Prevents duplicate popups on replay via seenTriggerIdsRef
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -67,7 +58,6 @@ export default function Home() {
     setPlaybackTime(current);
     previousPlaybackTimeRef.current = current;
 
-    // Ignore initial restores, paused playback, backward motion, and large scrubbing jumps (> 3s)
     if (
       !automaticNotesEnabled ||
       video.paused ||
@@ -78,24 +68,17 @@ export default function Home() {
       return;
     }
 
-    // Detect if forward playback crossed any significant feed action or interval
-    const crossedTrigger = feedTriggers.find(
-      (t) => previous < t.videoTimeSeconds && current >= t.videoTimeSeconds
-    );
-
-    if (crossedTrigger && !seenTriggerIdsRef.current.has(crossedTrigger.id)) {
-      // Prevent duplicate popups on replay
+    const crossedTrigger = findCrossedTrigger(previous, current, seenTriggerIdsRef.current);
+    if (crossedTrigger) {
       seenTriggerIdsRef.current.add(crossedTrigger.id);
       showAutomaticNote(crossedTrigger);
     }
   };
 
   const handleSeeking = () => {
-    // Clear previous playback time so scrubbing jumps do not trigger notes
     previousPlaybackTimeRef.current = null;
   };
 
-  // Selection synchronization: clear selectedEventId if seek moves outside 30s boundary
   const handleSeeked = () => {
     const current = videoRef.current?.currentTime ?? null;
     previousPlaybackTimeRef.current = current;
@@ -104,7 +87,6 @@ export default function Home() {
       const activeEvent = curatedEvents.find((e) => e.id === selectedEventId);
       if (activeEvent) {
         const diff = Math.abs(current - activeEvent.videoTimeSeconds);
-        // Clear selection only if outside verified 30s selection window
         if (diff > 30) {
           setSelectedEventId(null);
         }
@@ -127,17 +109,16 @@ export default function Home() {
   }, [autoNoteEvent]);
 
   const handleAskMore = async (event) => {
-    const targetEvent = event || autoNoteEvent;
-    if (!targetEvent) return;
+    if (!event) return;
 
-    const defaultQ = targetEvent.player
-      ? `Can you explain what happened with ${targetEvent.player} at ${targetEvent.matchMinute}?`
-      : targetEvent.title
-      ? `Can you explain what happened during "${targetEvent.title}"?`
+    const defaultQ = event.player
+      ? `Can you explain what happened with ${event.player} at ${event.matchMinute}?`
+      : event.title
+      ? `Can you explain what happened during "${event.title}"?`
       : "Can you explain this moment in the match?";
 
-    const eventId = targetEvent.curatedEventId || (targetEvent.isCurated ? targetEvent.id : null);
-    const timeSec = targetEvent.videoTimeSeconds || playbackTime;
+    const eventId = event.curatedEventId || (event.isCurated ? event.id : null);
+    const timeSec = event.videoTimeSeconds || playbackTime;
 
     setSelectedEventId(eventId);
     setQuestion(defaultQ);
@@ -145,33 +126,26 @@ export default function Home() {
     setCompanionOpen(true);
     setCapturedTimestamp(timeSec);
 
-    // Call Gemini API immediately
     await submitQuestionToApi({
       questionText: defaultQ,
       timeSec,
       eventId,
-      level: "simple",
     });
   };
 
-  // Seek video directly to a specific timestamp, optionally playing through the replay passage
-  const handleJumpToTime = (seconds, autoPlay = false) => {
+  const handleJumpToTime = (seconds) => {
     if (videoRef.current && typeof seconds === "number" && !isNaN(seconds)) {
       const duration = videoRef.current.duration || 9460;
       const target = Math.max(0, Math.min(seconds, duration));
       videoRef.current.currentTime = target;
       setPlaybackTime(target);
-      if (autoPlay) {
-        videoRef.current.play?.().catch(() => {});
-      }
+      videoRef.current.play?.().catch(() => {});
     }
   };
 
-  // Demo check: start 10 seconds before a feed timestamp and let playback trigger the AI note.
   const handleTestFeedTrigger = (triggerId) => {
     const trigger = feedTriggers.find((t) => t.id === triggerId);
     if (!trigger || !videoRef.current) return;
-    // Allow re-testing this trigger by clearing it from the seen set
     seenTriggerIdsRef.current.delete(trigger.id);
     const target = Math.max(0, trigger.videoTimeSeconds - 10);
     videoRef.current.currentTime = target;
@@ -180,8 +154,7 @@ export default function Home() {
     videoRef.current.play?.().catch(() => {});
   };
 
-  // Submit question to server endpoint /api/ask, which computes context and evidence server-side
-  const submitQuestionToApi = async ({ questionText, timeSec, eventId, level, automaticTrigger = false, triggerId = null }) => {
+  const submitQuestionToApi = async ({ questionText, timeSec, eventId, automaticTrigger = false, triggerId = null }) => {
     setStatus("loading");
     setErrorMessage(null);
     try {
@@ -192,7 +165,6 @@ export default function Home() {
           question: questionText,
           playbackTimeSec: timeSec,
           selectedEventId: eventId,
-          explanationLevel: level,
           automaticTrigger,
           triggerId,
         }),
@@ -207,7 +179,7 @@ export default function Home() {
       setAnswerData(data);
       setStatus("answered");
     } catch (err) {
-      console.error("Error submitting question to /api/ask:", err);
+      console.error("Could not get a match explanation:", err);
       setErrorMessage(err.message || "Failed to retrieve explanation.");
       setStatus("error");
     }
@@ -218,6 +190,7 @@ export default function Home() {
     const trimmed = question.trim();
     if (!trimmed) return;
 
+    videoRef.current?.pause();
     let capturedSec = playbackTime;
     if (videoRef.current) {
       capturedSec = videoRef.current.currentTime;
@@ -228,7 +201,6 @@ export default function Home() {
       questionText: trimmed,
       timeSec: capturedSec,
       eventId: selectedEventId,
-      level: "simple",
     });
   };
 
@@ -242,7 +214,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 px-4 py-6 sm:px-6 lg:px-8">
-      {/* Top Header */}
       <header className="max-w-7xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-900">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 text-white font-bold text-base shadow-md">
@@ -272,35 +243,27 @@ export default function Home() {
       <div className="player-stage">
         <div className="mb-3 flex flex-wrap items-center gap-2.5">
           {process.env.NODE_ENV === "development" && (
-            <button
-              type="button"
-              aria-expanded={eventMarkerOpen}
-              onClick={() => setEventMarkerOpen((open) => !open)}
-              className="cursor-pointer rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-300 hover:border-zinc-600 hover:text-white"
+            <select
+              aria-label="Preview an automatic match note"
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleTestFeedTrigger(e.target.value);
+                  e.target.value = "";
+                }
+              }}
+              className="cursor-pointer rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-cyan-300 hover:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-cyan-300"
             >
-              {eventMarkerOpen ? "Close event marker" : "Developer: mark event"}
-            </button>
-          )}
-          <select
-            aria-label="Test a match feed trigger"
-            defaultValue=""
-            onChange={(e) => {
-              if (e.target.value) {
-                handleTestFeedTrigger(e.target.value);
-                e.target.value = "";
-              }
-            }}
-            className="cursor-pointer rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-cyan-300 hover:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-          >
-            <option value="" disabled>
-              Demo: test AI popup (starts 10s before)…
-            </option>
-            {feedTriggers.map((t) => (
-              <option key={t.id} value={t.id}>
-                {formatPlaybackTime(t.videoTimeSeconds)} [{t.matchMinute}] {t.title}
+              <option value="" disabled>
+                Preview a match note…
               </option>
-            ))}
-          </select>
+              {feedTriggers.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {formatPlaybackTime(t.videoTimeSeconds)} [{t.matchMinute}] {t.title}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <MatchPlayer
           videoRef={videoRef}
@@ -333,15 +296,11 @@ export default function Home() {
             onReset={handleReset}
             autoNoteEvent={autoNoteEvent}
             onAskAboutMoment={handleAskMore}
+            onReplay={handleJumpToTime}
             onClose={closeCompanion}
           />
         </MatchPlayer>
 
-        {process.env.NODE_ENV === "development" && (
-          <div className={eventMarkerOpen ? "block" : "hidden"}>
-            <EventMarkerTool videoRef={videoRef} playbackTime={playbackTime} />
-          </div>
-        )}
       </div>
     </main>
   );

@@ -1,31 +1,12 @@
-/**
- * Formats deterministic retrieved match context into a fan-friendly answer presentation.
- *
- * Rules:
- * - Lead with one concise plain-English explanation.
- * - Prioritize only the evidence directly relevant to the question (e.g. cautions for card questions).
- * - Put full match feed logs and secondary rules behind "More match details".
- * - Clearly separate the match clock from the video clock.
- * - Use fan-friendly labels ("About this moment", "Match record").
- *
- * @param {object} params
- * @param {object} params.context - Output of buildContext()
- * @param {string} [params.question] - The submitted question
- * @param {string} [params.explanationLevel] - 'simple' | 'detailed'
- * @param {string} [params.matchMinute] - Calibrated clock at current playback
- * @returns {object} Formatted answer presentation object
- */
 export function formatAnswerPresentation({
   context,
   question = "",
-  explanationLevel = "simple",
   matchMinute = "",
 } = {}) {
   const matched = context?.matchedEvent;
   const isNoMatching = context?.eventStatus === "no_matching_event";
   const cleanQ = (question || "").toLowerCase();
 
-  // 1. Separate Match Clock and Video Clock
   let matchClockDisplay = "Live";
   if (matched?.matchMinute) {
     if (matched.matchMinute.toLowerCase().includes("shootout")) {
@@ -37,16 +18,22 @@ export function formatAnswerPresentation({
     matchClockDisplay = matchMinute;
   }
 
-  // 2. Lead with one short, definitive explanation
   let leadExplanation = "";
   if (context?.possessionQuestion) {
     const action = context.latestOnBallAction;
     if (!action?.player) {
-      leadExplanation = "I can’t reliably identify who has the ball here. The match feed has no recent on-ball record for this point.";
-    } else if (action.secondsBeforePlayhead <= 10 && ["Ball Receipt*", "Carry", "Dribble", "Ball Recovery", "Interception"].includes(action.type)) {
-      leadExplanation = `The latest feed record shows ${action.player} of ${action.team} ${action.type === "Carry" ? "carrying" : action.type === "Ball Receipt*" ? "receiving" : action.type === "Dribble" ? "dribbling" : "recovering"} the ball at ${action.timeDisplay}, about ${action.secondsBeforePlayhead} seconds before this point. The feed does not confirm possession on the exact video frame.`;
+      leadExplanation = "I can’t tell who has the ball from this moment. The match record has no recent action for it.";
     } else {
-      leadExplanation = `The latest on-ball action in the feed was ${action.type.toLowerCase()} by ${action.player} at ${action.timeDisplay}. It does not confirm who has the ball on the exact video frame.`;
+      const verbs = {
+        "Ball Receipt*": "received",
+        Carry: "carried",
+        Dribble: "dribbled",
+        "Ball Recovery": "recovered",
+        Interception: "intercepted",
+      };
+      const actionText = verbs[action.type] || action.type.toLowerCase();
+      const team = action.team ? ` of ${action.team}` : "";
+      leadExplanation = `The latest recorded action shows ${action.player}${team} ${actionText} the ball at ${action.timeDisplay}, about ${action.secondsBeforePlayhead} seconds ago. It may not show who has it now.`;
     }
   } else if (isNoMatching) {
     const state = context?.matchState;
@@ -89,11 +76,9 @@ export function formatAnswerPresentation({
     leadExplanation =
       "Extra time ended 2–2, sending the match into a penalty shootout under tournament knockout rules.";
   } else if (matched) {
-    leadExplanation =
-      explanationLevel === "detailed" ? matched.description : matched.quickNote;
+    leadExplanation = matched.quickNote;
   }
 
-  // 3. Question-driven Action Relevance (Show only evidence that answers the question)
   const allActions = Array.isArray(context?.statsBombActions) ? context.statsBombActions : [];
   let primaryActions = [];
   let secondaryActions = [];
@@ -103,7 +88,7 @@ export function formatAnswerPresentation({
     primaryActions = [{
       id: `on-ball-${action.timeDisplay}-${action.player}`,
       timeDisplay: action.timeDisplay,
-      type: `Latest recorded on-ball action · ${action.type}`,
+      type: `Last recorded action · ${action.type}`,
       player: action.player,
       team: action.team,
     }];
@@ -128,7 +113,6 @@ export function formatAnswerPresentation({
   if (context?.possessionQuestion) {
     secondaryActions = [];
   } else if (isCardQuestion && allActions.length > 0) {
-    // Show only the cautions / red cards / fouls first
     primaryActions = allActions.filter(
       (a) =>
         a.type === "Bad Behaviour" ||
@@ -155,12 +139,10 @@ export function formatAnswerPresentation({
       secondaryActions = allActions.slice(2);
     }
   } else {
-    // Default: show top 2 actions as primary, remaining behind secondary
     primaryActions = allActions.slice(0, 2);
     secondaryActions = allActions.slice(2);
   }
 
-  // 4. Question-driven Rule Relevance (Primary rule vs secondary rules)
   const allRules = Array.isArray(context?.rules) ? context.rules : [];
   let primaryRule = null;
   let secondaryRules = [];
@@ -188,11 +170,9 @@ export function formatAnswerPresentation({
   }
 
   return {
-    question,
     eventStatus: context?.eventStatus || "no_matching_event",
     matchClockDisplay,
     matchState: context?.matchState || null,
-    possessionQuestion: Boolean(context?.possessionQuestion),
     latestOnBallAction: context?.latestOnBallAction || null,
     leadExplanation,
     primaryActions,

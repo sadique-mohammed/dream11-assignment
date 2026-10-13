@@ -4,10 +4,6 @@ const sortedMarkers = Array.isArray(markerData?.markers)
   ? [...markerData.markers].sort((a, b) => a.videoTimeSeconds - b.videoTimeSeconds)
   : [];
 
-/**
- * High-signal event types to keep from the StatsBomb feed.
- * Omits routine tracking events (passes, receipts, carries, recoveries, etc.).
- */
 export const HIGH_SIGNAL_TYPES = new Set([
   "Shot",
   "Goal",
@@ -27,7 +23,6 @@ const ON_BALL_TYPES = new Set([
   "Shot",
 ]);
 
-/** Return the latest StatsBomb on-ball event at or before the playhead clock. */
 export function findLatestOnBallAction(events, { period, minute, second = 59 } = {}) {
   if (!Array.isArray(events) || typeof period !== "number" || typeof minute !== "number") {
     return null;
@@ -65,17 +60,7 @@ export function findLatestOnBallAction(events, { period, minute, second = 59 } =
   };
 }
 
-/**
- * Resolves the numeric period and minute for querying /api/statsbomb,
- * or determines that the query should be skipped with a stated reason.
- *
- * @param {object} params
- * @param {number} params.playbackTimeSec
- * @param {object|null} [params.selectedEvent]
- * @returns {{ shouldQuery: boolean, period: number | null, minute: number | null, reason?: string }}
- */
 export function resolveStatsBombQueryTarget({ playbackTimeSec, selectedEvent = null } = {}) {
-  // 1. If an explicit verified event is provided, prefer its verified statsBombPosition
   if (selectedEvent) {
     if (
       selectedEvent.statsBombPosition &&
@@ -96,7 +81,6 @@ export function resolveStatsBombQueryTarget({ playbackTimeSec, selectedEvent = n
     };
   }
 
-  // 2. Unselected playback time: map through calibrated match minute markers
   if (
     typeof playbackTimeSec !== "number" ||
     isNaN(playbackTimeSec) ||
@@ -114,7 +98,6 @@ export function resolveStatsBombQueryTarget({ playbackTimeSec, selectedEvent = n
   const currentSec = Math.floor(playbackTimeSec);
   const firstMarkerSec = Math.floor(sortedMarkers[0].videoTimeSeconds);
 
-  // Pre-match before kickoff
   if (currentSec < firstMarkerSec) {
     return {
       shouldQuery: false,
@@ -124,7 +107,6 @@ export function resolveStatsBombQueryTarget({ playbackTimeSec, selectedEvent = n
     };
   }
 
-  // Find active marker
   let activeMarker = sortedMarkers[0];
   for (let i = 0; i < sortedMarkers.length; i++) {
     const markerSec = Math.floor(sortedMarkers[i].videoTimeSeconds);
@@ -137,7 +119,6 @@ export function resolveStatsBombQueryTarget({ playbackTimeSec, selectedEvent = n
 
   const rawMinute = String(activeMarker?.matchMinute || "").trim();
 
-  // Non-playing breaks / milestones
   if (rawMinute === "HT" || rawMinute === "HT Over") {
     return {
       shouldQuery: false,
@@ -165,7 +146,6 @@ export function resolveStatsBombQueryTarget({ playbackTimeSec, selectedEvent = n
     };
   }
 
-  // Stoppage time handling
   const stoppageMatch = rawMinute.match(/^(\d+)\+(\d+)$/);
   if (stoppageMatch) {
     const base = parseInt(stoppageMatch[1], 10);
@@ -194,7 +174,6 @@ export function resolveStatsBombQueryTarget({ playbackTimeSec, selectedEvent = n
     }
   }
 
-  // Standard numeric minute mapping to official match periods
   const numericMinute = parseInt(rawMinute, 10);
   if (!isNaN(numericMinute)) {
     if (numericMinute <= 45) {
@@ -235,17 +214,6 @@ export function resolveStatsBombQueryTarget({ playbackTimeSec, selectedEvent = n
   };
 }
 
-/**
- * Filters a raw list of StatsBomb events down to concise high-signal actions
- * (goals, shots, fouls/cards, substitutions).
- *
- * Live match guard: optionally rejects any event beyond maxAllowedMinute (e.g. targetMinute + 1).
- *
- * @param {Array<object>} events
- * @param {object} [options]
- * @param {number|null} [options.maxAllowedMinute]
- * @returns {Array<object>}
- */
 export function filterHighSignalStatsBombActions(events, { maxAllowedMinute = null } = {}) {
   if (!Array.isArray(events)) return [];
 

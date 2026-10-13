@@ -4,15 +4,7 @@ import { filterHighSignalStatsBombActions, findLatestOnBallAction } from "./stat
 
 const TIMESTAMP_MATCH_FALLBACK_WINDOW_SEC = 25;
 
-/**
- * Determines whether a playback time in seconds falls within an event's verified range.
- * Uses replayStartSeconds/replayEndSeconds if available, otherwise +/- 25s window.
- *
- * @param {object} event
- * @param {number} timeSec
- * @returns {boolean}
- */
-export function isPlaybackTimeWithinEvent(event, timeSec) {
+function isPlaybackTimeWithinEvent(event, timeSec) {
   if (!event || typeof timeSec !== "number" || isNaN(timeSec)) return false;
 
   const hasReplayRange =
@@ -28,17 +20,6 @@ export function isPlaybackTimeWithinEvent(event, timeSec) {
   return timeSec >= start && timeSec <= end;
 }
 
-/**
- * Pure, synchronous, deterministic context retrieval function.
- * Does not fetch network data or call an AI model.
- *
- * @param {object} params
- * @param {number} params.playbackTimeSec - Current video playback time in seconds
- * @param {string|null} [params.selectedEventId] - Explicitly selected event ID (if any)
- * @param {string} [params.question] - The user's submitted question
- * @param {Array<object>|null} [params.statsBombEvents] - Optional pre-fetched StatsBomb slice
- * @returns {object} Deterministic evidence context object
- */
 export function buildContext({
   playbackTimeSec = 0,
   selectedEventId = null,
@@ -54,23 +35,19 @@ export function buildContext({
   let matchedEvent = null;
   let eventStatus = "no_matching_event";
 
-  // 1. Explicit event selection
   if (selectedEventId !== null && selectedEventId !== undefined && String(selectedEventId).trim() !== "") {
     const found = getEventById(String(selectedEventId).trim());
     if (found) {
       matchedEvent = found;
       eventStatus = "matched_event";
     } else {
-      // Invalid event ID: return no matching event. DO NOT silently fall back to timestamp.
       matchedEvent = null;
       eventStatus = "no_matching_event";
     }
   } else {
-    // 2. Timestamp-based match: search within verified replay boundaries or +/- 25s fallback
     const matchingCandidates = curatedEvents.filter((ev) => isPlaybackTimeWithinEvent(ev, timeSec));
 
     if (matchingCandidates.length > 0) {
-      // If multiple events overlap the window, select the closest to the center videoTimeSeconds
       matchingCandidates.sort(
         (a, b) =>
           Math.abs(timeSec - a.videoTimeSeconds) - Math.abs(timeSec - b.videoTimeSeconds)
@@ -83,14 +60,12 @@ export function buildContext({
     }
   }
 
-  // 3. Rule matching: using matched event tags and question terms
   const eventRuleTags = matchedEvent?.ruleTags || [];
   const rules = retrieveMatchingRules({
     ruleTags: eventRuleTags,
     question: cleanQuestion,
   });
 
-  // 4. Match state
   let resolvedMatchState = matchState;
   if (matchedEvent) {
     resolvedMatchState = {
@@ -104,7 +79,6 @@ export function buildContext({
     };
   }
 
-  // 5. StatsBomb high-signal actions (live match: backward history, max +1 min forward)
   let maxAllowedMinute = null;
   if (typeof matchedEvent?.statsBombPosition?.minute === "number") {
     maxAllowedMinute = matchedEvent.statsBombPosition.minute + 1;
@@ -115,7 +89,6 @@ export function buildContext({
     ? findLatestOnBallAction(statsBombEvents, matchPosition || {})
     : null;
 
-  // 6. Aggregate sources
   const sources = [];
   const seenSourceUrls = new Set();
 
@@ -138,7 +111,6 @@ export function buildContext({
     }
   }
 
-  // 7. Aggregate uncertainty and evidence limits
   const uncertainty = [];
   if (matchedEvent?.uncertainty && Array.isArray(matchedEvent.uncertainty)) {
     uncertainty.push(...matchedEvent.uncertainty);
@@ -147,7 +119,7 @@ export function buildContext({
   const evidenceLimits = [];
   if (Array.isArray(statsBombEvents) && !possessionQuestion) {
     evidenceLimits.push(
-      "StatsBomb records match actions; it cannot establish referee intent or unrecorded tactical rationale."
+      "The match record lists actions, but it does not say why the referee made a decision or explain tactics that were not recorded."
     );
   }
   if (
@@ -167,22 +139,8 @@ export function buildContext({
     statsBombActions: highSignalActions,
     possessionQuestion,
     latestOnBallAction,
-    statsBombStatus: {
-      queried: Array.isArray(statsBombEvents),
-      actionsCount: highSignalActions.length,
-      label: Array.isArray(statsBombEvents)
-        ? `${highSignalActions.length} feed-recorded action(s)`
-        : "No StatsBomb feed queried",
-    },
     sources,
     uncertainty,
     evidenceLimits,
-    retrievalMetadata: {
-      playbackTimeSec: timeSec,
-      explicitEventRequested: selectedEventId,
-      question: cleanQuestion,
-      matchPosition,
-      timestampMatchesAllowed: selectedEventId === null || selectedEventId === undefined,
-    },
   };
 }

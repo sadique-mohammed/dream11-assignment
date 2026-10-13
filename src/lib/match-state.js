@@ -1,4 +1,3 @@
-/** Derive phase and score from the calibrated match clock and StatsBomb goals. */
 export function getMatchStateAtClock(matchClock, events = []) {
   const label = typeof matchClock === "string" ? matchClock : "Unavailable";
   const position = parseMatchClock(label);

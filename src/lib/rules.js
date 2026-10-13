@@ -1,27 +1,15 @@
 import rulesData from "../../data/rules.json" with { type: "json" };
 
-/**
- * Returns all curated IFAB rules and competition regulations.
- * @returns {Array<object>}
- */
 export function getCuratedRules() {
   return Array.isArray(rulesData?.rules) ? rulesData.rules : [];
 }
 
-/**
- * Returns a single rule entry by its ID.
- * @param {string} id
- * @returns {object|null}
- */
 export function getRuleById(id) {
   if (!id) return null;
   const rules = getCuratedRules();
   return rules.find((r) => r.id === id) || null;
 }
 
-/**
- * Direct tag alias mapping to normalize event ruleTags to rule IDs.
- */
 const TAG_TO_RULE_MAP = {
   penalty_kick: "penalty_kick",
   penalty: "penalty_kick",
@@ -43,9 +31,6 @@ const TAG_TO_RULE_MAP = {
   extra_time_and_shootout: "extra_time_and_shootout",
 };
 
-/**
- * Question keyword mapping for general rule queries.
- */
 const QUESTION_TERM_MAP = [
   {
     ruleId: "offside",
@@ -116,19 +101,9 @@ const QUESTION_TERM_MAP = [
   },
 ];
 
-/**
- * Retrieves relevant rules using event tags and question text.
- * Returns an array of deduplicated rule objects.
- *
- * @param {object} params
- * @param {Array<string>} [params.ruleTags]
- * @param {string} [params.question]
- * @returns {Array<object>}
- */
 export function retrieveMatchingRules({ ruleTags = [], question = "" } = {}) {
   const matchedRuleIds = new Set();
 
-  // 1. Match from event rule tags
   if (Array.isArray(ruleTags)) {
     for (const tag of ruleTags) {
       const normalizedId = TAG_TO_RULE_MAP[tag] || tag;
@@ -138,7 +113,6 @@ export function retrieveMatchingRules({ ruleTags = [], question = "" } = {}) {
     }
   }
 
-  // 2. Match from question text
   if (typeof question === "string" && question.trim().length > 0) {
     const q = question.trim();
     for (const mapping of QUESTION_TERM_MAP) {

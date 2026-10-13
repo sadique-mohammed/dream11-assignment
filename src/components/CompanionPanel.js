@@ -19,6 +19,7 @@ export default function CompanionPanel({
   autoNoteEvent,
   onSubmit,
   onAskAboutMoment,
+  onReplay,
   onReset,
   onClose,
 }) {
@@ -29,13 +30,11 @@ export default function CompanionPanel({
   }, [status, autoNoteEvent]);
 
   const handleSuggestedClick = (text) => {
-    // Fill the input only; do NOT auto-submit (per viewer preference)
     setQuestion(text);
   };
 
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/20 bg-zinc-950/75 p-3 text-white shadow-2xl backdrop-blur-xl sm:p-4">
-      {/* Panel Header */}
       <div className="flex items-center justify-between gap-2 pb-3 border-b border-zinc-800">
         <div
           data-lens-drag-handle="true"
@@ -69,7 +68,6 @@ export default function CompanionPanel({
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div ref={contentRef} className="pt-3 flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {autoNoteEvent && status === "idle" ? (
           <div className="flex h-full flex-col gap-3">
@@ -120,7 +118,6 @@ export default function CompanionPanel({
               {autoNoteEvent.quickNote || autoNoteEvent.description}
             </p>
 
-            {/* Minute-to-video mapping caveat */}
             <div className={`mt-1 flex items-start gap-1.5 rounded-lg border px-2.5 py-2 text-[11px] leading-relaxed ${
               autoNoteEvent.isCurated
                 ? "bg-emerald-950/30 border-emerald-800/50 text-emerald-300/90"
@@ -130,7 +127,7 @@ export default function CompanionPanel({
                 {autoNoteEvent.isCurated ? "✓" : "⚡"}
               </span>
               <span>
-                {autoNoteEvent.mappingNote || "Mapped from StatsBomb feed (approx. ±15s from broadcast clock)"}
+                {autoNoteEvent.mappingNote || "Approximate timing from the match record."}
               </span>
             </div>
 
@@ -157,7 +154,6 @@ export default function CompanionPanel({
           </div>
         ) : status === "idle" && (
           <div className="flex flex-col gap-4">
-            {/* Suggested Questions */}
             <div>
               <p className="mb-2 text-xs font-medium text-zinc-400">
                 Try one of these
@@ -176,7 +172,6 @@ export default function CompanionPanel({
               </div>
             </div>
 
-            {/* Question Input Form */}
             <form onSubmit={onSubmit} className="flex flex-col gap-3">
               <label
                 htmlFor="companion-question"
@@ -217,7 +212,7 @@ export default function CompanionPanel({
             )}
             <p className="flex items-center gap-2 text-xs text-zinc-300">
               <span className="h-3 w-3 animate-spin rounded-full border border-zinc-600 border-t-cyan-300" />
-              {autoNoteEvent ? "Checking the match feed…" : "Thinking…"}
+              {autoNoteEvent ? "Checking match details…" : "Thinking…"}
             </p>
           </div>
         )}
@@ -226,7 +221,7 @@ export default function CompanionPanel({
           <AnswerCard
             answerData={answerData}
             capturedTimestamp={capturedTimestamp}
-            explanationLevel="simple"
+            onReplay={onReplay}
             onReset={onReset}
           />
         )}

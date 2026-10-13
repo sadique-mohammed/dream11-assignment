@@ -58,7 +58,7 @@ export default function MatchPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [panelPosition, setPanelPosition] = useState({ left: 12, top: 12 });
   const [videoLoadError, setVideoLoadError] = useState(false);
-  const videoSource = process.env.NEXT_PUBLIC_VIDEO_SRC || "https://live-lens-video.sadiquemohd48.workers.dev/live-match.mp4";
+  const videoSource = process.env.NEXT_PUBLIC_VIDEO_SRC || "/media/live-match.mp4";
   const positionedNoteRef = useRef(null);
 
   const toggleCompanionAtOrb = () => {

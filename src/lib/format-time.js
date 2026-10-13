@@ -1,8 +1,3 @@
-/**
- * Formats seconds into HH:MM:SS format
- * @param {number} seconds
- * @returns {string}
- */
 export function formatPlaybackTime(seconds) {
   if (typeof seconds !== "number" || isNaN(seconds) || seconds < 0) {
     return "00:00:00";

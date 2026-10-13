@@ -36,7 +36,6 @@ async function generateTriggers() {
   const allEvents = await getStatsBombEvents();
   const triggers = [];
 
-  // 1. Match interval breaks
   const breaks = [
     {
       id: "break-HT",
@@ -71,7 +70,6 @@ async function generateTriggers() {
   ];
   triggers.push(...breaks);
 
-  // 2. Curated major moments (highest fidelity)
   for (const c of curated) {
     triggers.push({
       id: c.id,
@@ -97,7 +95,6 @@ async function generateTriggers() {
     });
   }
 
-  // 3. StatsBomb feed significant actions (goals, cards, penalties, shootout kicks)
   for (const e of allEvents) {
     const isGoal = e.shot?.outcome?.name === "Goal";
     const card = e.foul_committed?.card?.name || e.bad_behaviour?.card?.name;
@@ -109,7 +106,6 @@ async function generateTriggers() {
     const vTime = mapToVideoTime(e.period, e.minute, e.second || 0);
     if (vTime === null) continue;
 
-    // If an exact curated event covers this moment within 35s in video time, skip feed duplicate
     const matchedCurated = curated.find((c) => {
       return Math.abs(c.videoTimeSeconds - vTime) <= 35;
     });
@@ -155,11 +151,10 @@ async function generateTriggers() {
       quickNote,
       player: e.player?.name || null,
       team: e.team?.name || null,
-      mappingNote: "Mapped from StatsBomb feed (approx. ±15s from broadcast clock)",
+      mappingNote: "Approximate video timing from match records (about ±15 seconds)",
     });
   }
 
-  // Deduplicate by ID and sort chronologically
   const seenIds = new Set();
   triggers.sort((a, b) => a.videoTimeSeconds - b.videoTimeSeconds);
 
