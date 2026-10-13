@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import AnswerCard from "./AnswerCard";
 
 const SUGGESTED_QUESTIONS = [
   "What just happened?",
   "Why was a card shown?",
-  "What happens next?",
+  "What does that mean?",
 ];
 
 export default function CompanionPanel({
@@ -23,6 +24,12 @@ export default function CompanionPanel({
   onReset,
   onClose,
 }) {
+  const contentRef = useRef(null);
+
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+  }, [status, autoNoteEvent]);
+
   const handleSuggestedClick = (text) => {
     // Fill the input only; do NOT auto-submit (per viewer preference)
     setQuestion(text);
@@ -90,7 +97,7 @@ export default function CompanionPanel({
       </div>
 
       {/* Main Content Area */}
-      <div className="pt-3 flex-1 min-h-0 overflow-y-auto overscroll-contain">
+      <div ref={contentRef} className="pt-3 flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {autoNoteEvent && status === "idle" ? (
           <div className="flex h-full flex-col gap-3">
             <div className="flex items-center justify-between gap-2 text-xs text-cyan-200">

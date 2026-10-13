@@ -327,7 +327,7 @@ export default function MatchPlayer({
         <div
           ref={panelRef}
           aria-hidden={!companionOpen}
-          inert={!companionOpen ? "" : undefined}
+          inert={!companionOpen}
           className={`lens-panel-shell ${companionOpen ? "lens-panel-visible" : "lens-panel-hidden hidden"} ${autoNoteEvent ? "lens-note-mode" : ""} absolute z-20`}
           style={{
             left: panelPosition.left,

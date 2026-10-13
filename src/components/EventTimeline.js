@@ -67,21 +67,36 @@ export default function EventTimeline({
                   <span className="text-zinc-500 capitalize">{event.period.replace("_", " ")}</span>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelectEvent(event.id);
-                    onJumpToTime(event.videoTimeSeconds);
-                    onShowMoment?.(event);
-                  }}
-                  className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                    isSelected
-                    ? "bg-blue-600 text-white"
-                    : "bg-zinc-800 text-zinc-300 group-hover:bg-blue-600 group-hover:text-white"
-                  }`}
-                >
-                  Open note
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectEvent(event.id);
+                      onJumpToTime(event.replayStartSeconds ?? event.videoTimeSeconds, true);
+                      onShowMoment?.(event);
+                    }}
+                    title="Play through the replay passage"
+                    className="px-2 py-1 rounded text-[11px] font-medium bg-emerald-700/80 hover:bg-emerald-600 text-white transition-colors cursor-pointer inline-flex items-center gap-1"
+                  >
+                    ▶ Replay
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectEvent(event.id);
+                      onJumpToTime(event.replayStartSeconds ?? event.videoTimeSeconds, false);
+                      onShowMoment?.(event);
+                    }}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                      isSelected
+                      ? "bg-blue-600 text-white"
+                      : "bg-zinc-800 text-zinc-300 group-hover:bg-blue-600 group-hover:text-white"
+                    }`}
+                  >
+                    Open note
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -102,13 +117,22 @@ export default function EventTimeline({
                   </span>
                   <h4 className="font-semibold text-white text-sm">{active.title}</h4>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onSelectEvent(null)}
-                  className="text-zinc-500 hover:text-zinc-300 text-xs cursor-pointer px-1.5 py-0.5"
-                >
-                  ✕ Close
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onJumpToTime(active.replayStartSeconds ?? active.videoTimeSeconds, true)}
+                    className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium cursor-pointer inline-flex items-center gap-1"
+                  >
+                    ▶ Replay moment {active.replayStartSeconds !== undefined ? `(${formatPlaybackTime(active.replayStartSeconds)} – ${formatPlaybackTime(active.replayEndSeconds)})` : ""}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectEvent(null)}
+                    className="text-zinc-500 hover:text-zinc-300 text-xs cursor-pointer px-1.5 py-0.5"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
               </div>
 
               {/* Confirmed Facts */}

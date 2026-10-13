@@ -1,26 +1,8 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
+import { getStatsBombEvents, getStatsBombSlice } from "@/lib/statsbomb-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const statsBombFile = path.join(process.cwd(), "data", "StatsBomb.json");
-
-// Cache parsed events in server memory to avoid reading 4MB on every request
-let cachedEvents = null;
-
-async function getStatsBombEvents() {
-  if (cachedEvents) return cachedEvents;
-  try {
-    const raw = await readFile(statsBombFile, "utf8");
-    cachedEvents = JSON.parse(raw);
-    return cachedEvents;
-  } catch (error) {
-    console.error("Failed to read StatsBomb.json:", error);
-    return [];
-  }
-}
 
 /**
  * GET /api/statsbomb?minute=73&window=5
@@ -49,14 +31,16 @@ export async function GET(request) {
     });
   }
 
-  const minMin = Math.max(0, targetMinute - windowMinutes);
-  const maxMin = targetMinute + windowMinutes;
+  const pastWindow = windowMinutes;
+  const forwardWindow = 1;
+  const minMin = Math.max(0, targetMinute - pastWindow);
+  const maxMin = targetMinute + forwardWindow;
 
-  const matched = allEvents.filter((e) => {
-    if (period !== null && !isNaN(period) && e.period !== period) {
-      return false;
-    }
-    return typeof e.minute === "number" && e.minute >= minMin && e.minute <= maxMin;
+  const matched = await getStatsBombSlice({
+    targetMinute,
+    period,
+    pastWindow,
+    forwardWindow,
   });
 
   // Pick only relevant concise fields so client bundle/network payload is not bloated

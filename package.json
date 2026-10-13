@@ -1,15 +1,19 @@
 {
   "name": "project",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "validate:events": "node scripts/validate-events.js"
+    "validate:events": "node scripts/validate-events.js",
+    "test:retrieval": "node scripts/test-context-retrieval.js",
+    "test:api": "node scripts/test-api-ask.js"
   },
   "dependencies": {
+    "@google/genai": "^2.28.0",
     "@lottiefiles/dotlottie-react": "^0.20.0",
     "next": "16.4.0",
     "react": "19.3.0",

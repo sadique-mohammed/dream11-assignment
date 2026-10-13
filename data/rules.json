@@ -1,0 +1,151 @@
+{
+  "rules": [
+    {
+      "id": "penalty_kick",
+      "law": "IFAB Law 14 (The Penalty Kick)",
+      "edition": "2022/23",
+      "sourceUrl": "https://downloads.theifab.com/downloads/laws-of-the-game-2022-23?l=en",
+      "summary": "A penalty kick is awarded if a player commits a direct free kick offence inside their own penalty area. The ball is kicked from the penalty mark (11 m / 12 yards) with only the defending goalkeeper between the kicker and the goal. The kicker must not play the ball a second time until it touches another player.",
+      "keywords": [
+        "penalty",
+        "penalty kick",
+        "spot kick",
+        "penalty area",
+        "penalties",
+        "box foul",
+        "penalty box",
+        "penalty awarded"
+      ]
+    },
+    {
+      "id": "foul_and_misconduct",
+      "law": "IFAB Law 12 (Fouls and Misconduct)",
+      "edition": "2022/23",
+      "sourceUrl": "https://downloads.theifab.com/downloads/laws-of-the-game-2022-23?l=en",
+      "summary": "For contact fouls, careless means a free kick but no card; reckless means a yellow card; using excessive force means a red card. A yellow card is a caution. During match play, a second caution in the same match results in a sending-off. Kicks from the penalty mark use separate caution accounting.",
+      "keywords": [
+        "foul",
+        "fouls",
+        "yellow card",
+        "booking",
+        "booked",
+        "caution",
+        "card",
+        "red card",
+        "sending off",
+        "dismissal",
+        "tackle",
+        "trip",
+        "push",
+        "handball"
+      ]
+    },
+    {
+      "id": "unsporting_behaviour",
+      "law": "IFAB Law 12 (Fouls and Misconduct - Disciplinary Action)",
+      "edition": "2022/23",
+      "sourceUrl": "https://downloads.theifab.com/downloads/laws-of-the-game-2022-23?l=en",
+      "summary": "Law 12 lists cautionable unsporting behaviour, including reckless challenges and certain provocative or deliberate actions. Whether a particular incident merits a caution depends on the referee's assessment; a match report may record the card without stating its precise reason. Cautions from match play, including extra time, do not carry into kicks from the penalty mark.",
+      "keywords": [
+        "unsporting",
+        "bench",
+        "dugout",
+        "confrontation",
+        "altercation",
+        "provocation",
+        "brawl",
+        "dissent",
+        "fight",
+        "behaviour",
+        "behavior"
+      ]
+    },
+    {
+      "id": "direct_free_kick",
+      "law": "IFAB Law 13 (Free Kicks)",
+      "edition": "2022/23",
+      "sourceUrl": "https://downloads.theifab.com/downloads/laws-of-the-game-2022-23?l=en",
+      "summary": "A direct free kick is awarded for physical contact fouls or handball outside the penalty area. If a direct free kick is kicked directly into the opponents' goal, a goal is awarded. The attacking team may also choose to pass or play a short or disguised free kick to a teammate. Opponents must remain at least 9.15 m (10 yards) from the ball until it is in play.",
+      "keywords": [
+        "free kick",
+        "direct free kick",
+        "short free kick",
+        "disguised",
+        "wall",
+        "defensive wall",
+        "set piece",
+        "restart"
+      ]
+    },
+    {
+      "id": "added_time",
+      "law": "IFAB Law 7 (The Duration of the Match - Allowance for Time Lost)",
+      "edition": "2022/23",
+      "sourceUrl": "https://downloads.theifab.com/downloads/laws-of-the-game-2022-23?l=en",
+      "summary": "Allowance is made by the referee in each half for all playing time lost through substitutions, assessment and removal of injured players, wasting time, disciplinary sanctions, medical drink breaks, delays relating to VAR checks, and goal celebrations. The fourth official indicates the minimum additional time decided by the referee, which the referee may increase but not decrease.",
+      "keywords": [
+        "added time",
+        "stoppage time",
+        "stoppage",
+        "injury time",
+        "extra time added",
+        "why 10 minutes",
+        "why so much time",
+        "additional time",
+        "time lost"
+      ]
+    },
+    {
+      "id": "offside",
+      "law": "IFAB Law 11 (Offside)",
+      "edition": "2022/23",
+      "sourceUrl": "https://downloads.theifab.com/downloads/laws-of-the-game-2022-23?l=en",
+      "summary": "A player is in an offside position if any part of their head, body, or feet is nearer to the opponents' goal line than both the ball and the second-last opponent. Hands and arms of all players, including goalkeepers, are not considered. It is not an offence in itself to be in an offside position; an offence occurs only when the player becomes actively involved in play at the moment the ball is played or touched by a teammate.",
+      "keywords": [
+        "offside",
+        "offside position",
+        "offside rule",
+        "flag",
+        "second-last defender",
+        "active play"
+      ]
+    },
+    {
+      "id": "extra_time_and_shootout",
+      "law": "IFAB Law 10 & FIFA World Cup Qatar 2022 Regulations",
+      "edition": "2022/23",
+      "sourceUrl": "https://digitalhub.fifa.com/m/2744a0a5e3ced185/original/World-Cup-Qatar-2022-Regulations_EN.pdf",
+      "summary": "In knockout rounds of the FIFA World Cup, if scores are tied after 90 minutes of regular playing time, two equal extra time periods of 15 minutes each are played. If the score remains tied after extra time, the winner is determined by kicks from the penalty mark (penalty shootout). Knockout format details depend on the specific competition regulations.",
+      "keywords": [
+        "extra time",
+        "shootout",
+        "penalty shootout",
+        "kicks from the penalty mark",
+        "knockout",
+        "draw",
+        "tie",
+        "why extra time",
+        "why penalties",
+        "advance"
+      ]
+    },
+    {
+      "id": "shootout_disciplinary",
+      "law": "IFAB Law 10 (Determining the Outcome of a Match - Kicks from the Penalty Mark)",
+      "edition": "2022/23",
+      "sourceUrl": "https://downloads.theifab.com/downloads/laws-of-the-game-2022-23?l=en",
+      "summary": "Cautions (yellow cards) and warnings issued to players and team officials during the match (including extra time) do not carry forward into kicks from the penalty mark. A player who received a caution during match play and is cautioned again during the shootout is not sent off for two yellow cards; they simply receive a caution in the shootout. Only receiving two cautions during the shootout itself results in a sending-off (red card).",
+      "keywords": [
+        "dumfries card",
+        "dumfries red",
+        "shootout card",
+        "two yellows",
+        "second yellow",
+        "cautions carried over",
+        "carry over",
+        "shootout dismissal",
+        "shootout red card"
+      ]
+    }
+  ]
+}

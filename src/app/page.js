@@ -5,6 +5,7 @@ import MatchPlayer from "@/components/MatchPlayer";
 import CompanionPanel from "@/components/CompanionPanel";
 import EventMarkerTool from "@/components/EventMarkerTool";
 import EventTimeline from "@/components/EventTimeline";
+import ContextInspector from "@/components/ContextInspector";
 import { getMatchMinuteAtTime } from "@/lib/match-minute";
 import { getCuratedEvents } from "@/lib/events";
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [status, setStatus] = useState("idle"); // 'idle' | 'loading' | 'answered' | 'error'
   const [capturedTimestamp, setCapturedTimestamp] = useState(null);
   const [answerData, setAnswerData] = useState(null);
+  const [retrievedContext, setRetrievedContext] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [companionOpen, setCompanionOpen] = useState(false);
   const [autoNoteEvent, setAutoNoteEvent] = useState(null);
@@ -60,8 +62,21 @@ export default function Home() {
     previousPlaybackTimeRef.current = null;
   };
 
+  // Selection synchronization: clear selectedEventId if seek moves outside 30s boundary
   const handleSeeked = () => {
-    previousPlaybackTimeRef.current = videoRef.current?.currentTime ?? null;
+    const current = videoRef.current?.currentTime ?? null;
+    previousPlaybackTimeRef.current = current;
+
+    if (selectedEventId && typeof current === "number") {
+      const activeEvent = curatedEvents.find((e) => e.id === selectedEventId);
+      if (activeEvent) {
+        const diff = Math.abs(current - activeEvent.videoTimeSeconds);
+        // Clear selection only if outside verified 30s selection window
+        if (diff > 30) {
+          setSelectedEventId(null);
+        }
+      }
+    }
   };
 
   const closeCompanion = useCallback(() => {
@@ -92,64 +107,83 @@ export default function Home() {
     setCompanionOpen(true);
   };
 
-  // Seek video directly to a specific timestamp
-  const handleJumpToTime = (seconds) => {
+  // Seek video directly to a specific timestamp, optionally playing through the replay passage
+  const handleJumpToTime = (seconds, autoPlay = false) => {
     if (videoRef.current && typeof seconds === "number" && !isNaN(seconds)) {
       const duration = videoRef.current.duration || 9460;
       const target = Math.max(0, Math.min(seconds, duration));
       videoRef.current.currentTime = target;
       setPlaybackTime(target);
+      if (autoPlay) {
+        videoRef.current.play?.().catch(() => {});
+      }
     }
   };
 
-  // Capture the question timestamp while playback continues in the background.
-  const handleQuestionSubmit = (e) => {
-    e.preventDefault();
+  // Submit question to server endpoint /api/ask, which computes context and evidence server-side
+  const submitQuestionToApi = async ({ questionText, timeSec, eventId, level }) => {
+    setStatus("loading");
+    setErrorMessage(null);
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: questionText,
+          playbackTimeSec: timeSec,
+          selectedEventId: eventId,
+          explanationLevel: level,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server returned ${res.status}`);
+      }
+
+      const data = await res.json();
+      setAnswerData(data);
+      setRetrievedContext(data.context || null);
+      setStatus("answered");
+    } catch (err) {
+      console.error("Error submitting question to /api/ask:", err);
+      setErrorMessage(err.message || "Failed to retrieve explanation.");
+      setStatus("error");
+    }
+  };
+
+  const handleQuestionSubmit = async (e, overrideLevel = null) => {
+    if (e && e.preventDefault) e.preventDefault();
     const trimmed = question.trim();
     if (!trimmed) return;
 
-    // Read currentTime directly so the answer is tied to the submitted moment.
     let capturedSec = playbackTime;
     if (videoRef.current) {
       capturedSec = videoRef.current.currentTime;
     }
-
     setCapturedTimestamp(capturedSec);
-    setStatus("loading");
-    setErrorMessage(null);
 
-    // Simulate short network turn to display loading state then render answer
-    setTimeout(() => {
-      const isSimple = explanationLevel === "simple";
-      const selectedEvent = curatedEvents.find((ev) => ev.id === selectedEventId);
+    const level = overrideLevel || explanationLevel;
+    await submitQuestionToApi({
+      questionText: trimmed,
+      timeSec: capturedSec,
+      eventId: selectedEventId,
+      level,
+    });
+  };
 
-      setAnswerData({
-        question: trimmed,
-        summary: isSimple
-          ? selectedEvent?.quickNote || "I don’t have a verified note for this moment yet. Try asking about a marked match moment."
-          : selectedEvent?.description || "I don’t have a verified note for this moment yet. Try asking about a marked match moment.",
-        confirmedFacts: [
-          ...(selectedEvent
-            ? [
-                `${selectedEvent.title} · ${selectedEvent.matchMinute}`,
-                ...selectedEvent.facts.slice(0, 2),
-              ]
-            : []),
-        ],
-        ruleExplanation: selectedEvent?.ruleTags?.includes("penalty_kick")
-          ? "A foul by a defending team inside its own penalty area can lead to a penalty kick."
-          : selectedEvent?.ruleTags?.includes("free_kick")
-            ? "A free kick restarts play after a foul. The team can pass instead of shooting."
-            : selectedEvent?.ruleTags?.includes("yellow_card")
-              ? "A yellow card is a warning. A player who receives a second yellow in the same match is sent off."
-              : null,
-        uncertainty: selectedEvent?.uncertainty?.length > 0
-          ? selectedEvent.uncertainty[0]
-          : null,
-        sources: selectedEvent?.sources || [],
+  const handleExplanationLevelChange = (newLevel) => {
+    setExplanationLevel(newLevel);
+    // If currently displaying an answer, re-request from /api/ask with the new level
+    if (status === "answered" && question.trim()) {
+      const capturedSec = capturedTimestamp !== null ? capturedTimestamp : playbackTime;
+      submitQuestionToApi({
+        questionText: question.trim(),
+        timeSec: capturedSec,
+        eventId: selectedEventId,
+        level: newLevel,
       });
-      setStatus("answered");
-    }, 600);
+    }
   };
 
   const handleReset = () => {
@@ -158,6 +192,44 @@ export default function Home() {
     setAnswerData(null);
     setCapturedTimestamp(null);
     setErrorMessage(null);
+  };
+
+  // Acceptance test runner for ContextInspector presets
+  const handleRunPreset = async (presetKey) => {
+    let presetTime = 0;
+    let presetEventId = null;
+    let presetQuestion = "";
+
+    if (presetKey === "known_event") {
+      presetTime = 5009.66;
+      presetEventId = "arg-penalty-73";
+      presetQuestion = "Why did Argentina get a penalty kick?";
+    } else if (presetKey === "unannotated_time") {
+      presetTime = 2000;
+      presetEventId = null;
+      presetQuestion = "What happened in this passage of play?";
+    } else if (presetKey === "general_rule") {
+      presetTime = 2000;
+      presetEventId = null;
+      presetQuestion = "What is the offside rule in football?";
+    } else if (presetKey === "shootout_event") {
+      presetTime = 9318.0;
+      presetEventId = "dumfries-dismissal-shootout";
+      presetQuestion = "Why was Dumfries sent off with a red card after the shootout?";
+    }
+
+    handleJumpToTime(presetTime);
+    setSelectedEventId(presetEventId);
+    setQuestion(presetQuestion);
+    setCapturedTimestamp(presetTime);
+    setCompanionOpen(true);
+
+    await submitQuestionToApi({
+      questionText: presetQuestion,
+      timeSec: presetTime,
+      eventId: presetEventId,
+      level: explanationLevel,
+    });
   };
 
   return (
@@ -227,7 +299,7 @@ export default function Home() {
             question={question}
             setQuestion={setQuestion}
             explanationLevel={explanationLevel}
-            setExplanationLevel={setExplanationLevel}
+            setExplanationLevel={handleExplanationLevelChange}
             capturedTimestamp={capturedTimestamp}
             answerData={answerData}
             errorMessage={errorMessage}
@@ -253,6 +325,12 @@ export default function Home() {
             />
           </div>
         </details>
+
+        {/* Development Context Inspector */}
+        <ContextInspector
+          context={retrievedContext}
+          onRunPreset={handleRunPreset}
+        />
 
         {process.env.NODE_ENV === "development" && (
           <div className={eventMarkerOpen ? "block" : "hidden"}>

@@ -1,4 +1,4 @@
-import markerData from "../../data/match-minute-markers.json";
+import markerData from "../../data/match-minute-markers.json" with { type: "json" };
 
 // Pre-sort markers ascending by video timestamp
 const sortedMarkers = Array.isArray(markerData?.markers)

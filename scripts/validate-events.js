@@ -68,13 +68,11 @@ function validateEvents() {
       previousTime = ev.videoTimeSeconds;
     }
 
-    // 6. Replay boundaries (if provided)
-    if (ev.replayStartSeconds !== undefined || ev.replayEndSeconds !== undefined) {
-      if (typeof ev.replayStartSeconds !== "number" || typeof ev.replayEndSeconds !== "number") {
-        errors.push(`${prefix} Replay boundaries must be numbers`);
-      } else if (ev.replayStartSeconds > ev.videoTimeSeconds || ev.videoTimeSeconds > ev.replayEndSeconds) {
-        errors.push(`${prefix} Replay range violation: must satisfy replayStartSeconds (${ev.replayStartSeconds}) <= videoTimeSeconds (${ev.videoTimeSeconds}) <= replayEndSeconds (${ev.replayEndSeconds})`);
-      }
+    // 6. Replay boundaries (required for curated events)
+    if (typeof ev.replayStartSeconds !== "number" || typeof ev.replayEndSeconds !== "number") {
+      errors.push(`${prefix} Curated events must specify both numeric "replayStartSeconds" and "replayEndSeconds"`);
+    } else if (ev.replayStartSeconds > ev.videoTimeSeconds || ev.videoTimeSeconds > ev.replayEndSeconds) {
+      errors.push(`${prefix} Replay range violation: must satisfy replayStartSeconds (${ev.replayStartSeconds}) <= videoTimeSeconds (${ev.videoTimeSeconds}) <= replayEndSeconds (${ev.replayEndSeconds})`);
     }
 
     // 7. Facts array check

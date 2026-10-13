@@ -5,6 +5,8 @@
       "title": "Argentina's Penalty & Messi Goal",
       "matchMinute": "73'",
       "videoTimeSeconds": 5009.66,
+      "replayStartSeconds": 4985.0,
+      "replayEndSeconds": 5040.0,
       "period": "second_half",
       "type": "penalty_goal",
       "description": "Denzel Dumfries fouls Marcos Acuña inside the penalty box; Lionel Messi converts the penalty kick to put Argentina ahead 2–0.",
@@ -12,7 +14,11 @@
       "scoreBefore": "1-0",
       "scoreAfter": "2-0",
       "people": ["Lionel Messi", "Marcos Acuña", "Denzel Dumfries"],
-      "ruleTags": ["penalty_kick", "foul"],
+      "ruleTags": ["penalty_kick", "foul_and_misconduct"],
+      "statsBombPosition": {
+        "period": 2,
+        "minute": 73
+      },
       "facts": [
         "Denzel Dumfries committed a foul on Marcos Acuña inside the Netherlands penalty area at match minute 70:40.",
         "Referee Antonio Mateu Lahoz awarded a direct penalty kick to Argentina.",
@@ -35,6 +41,8 @@
       "title": "Netherlands Score: Weghorst Header",
       "matchMinute": "83'",
       "videoTimeSeconds": 5566.0,
+      "replayStartSeconds": 5548.0,
+      "replayEndSeconds": 5598.0,
       "period": "second_half",
       "type": "goal",
       "description": "Substitute Wout Weghorst scores a glancing header from Steven Berghuis's curling cross to pull the Netherlands back to 2–1.",
@@ -42,7 +50,11 @@
       "scoreBefore": "2-0",
       "scoreAfter": "2-1",
       "people": ["Wout Weghorst", "Steven Berghuis", "Memphis Depay"],
-      "ruleTags": ["goal", "substitution", "cross"],
+      "ruleTags": ["goal", "substitution"],
+      "statsBombPosition": {
+        "period": 2,
+        "minute": 83
+      },
       "facts": [
         "Wout Weghorst was brought on as a substitute for Memphis Depay at match minute 77:57.",
         "Steven Berghuis delivered a curling cross from the right flank.",
@@ -67,6 +79,8 @@
       "title": "Paredes Foul, Bench Incident & Caution",
       "matchMinute": "89'",
       "videoTimeSeconds": 5915.0,
+      "replayStartSeconds": 5898.0,
+      "replayEndSeconds": 5975.0,
       "period": "second_half",
       "type": "card_and_altercation",
       "description": "Leandro Paredes fouls Nathan Aké and kicks the ball into the Dutch dugout; Virgil van Dijk pushes him down as a mass altercation breaks out.",
@@ -74,7 +88,11 @@
       "scoreBefore": "2-1",
       "scoreAfter": "2-1",
       "people": ["Leandro Paredes", "Nathan Aké", "Virgil van Dijk"],
-      "ruleTags": ["yellow_card", "unsporting_behaviour", "foul"],
+      "ruleTags": ["foul_and_misconduct", "unsporting_behaviour"],
+      "statsBombPosition": {
+        "period": 2,
+        "minute": 88
+      },
       "facts": [
         "Leandro Paredes challenged Nathan Aké near the touchline at match minute 87:57.",
         "Immediately after the whistle, Paredes kicked the loose ball with force into the Netherlands technical area.",
@@ -100,6 +118,8 @@
       "title": "Netherlands Equalise: Disguised Free Kick",
       "matchMinute": "90+11'",
       "videoTimeSeconds": 6690.29,
+      "replayStartSeconds": 6668.0,
+      "replayEndSeconds": 6735.0,
       "period": "second_half",
       "type": "goal",
       "description": "In the 101st minute, Teun Koopmeiners takes an ingenious short free kick through the defensive wall to Wout Weghorst, who turns and scores to equalise 2–2.",
@@ -107,7 +127,11 @@
       "scoreBefore": "2-1",
       "scoreAfter": "2-2",
       "people": ["Wout Weghorst", "Teun Koopmeiners", "Lisandro Martínez"],
-      "ruleTags": ["goal", "free_kick", "added_time"],
+      "ruleTags": ["direct_free_kick", "added_time"],
+      "statsBombPosition": {
+        "period": 2,
+        "minute": 101
+      },
       "facts": [
         "Referee added 10 minutes of stoppage time, extending past the 100th minute due to stoppages and altercations.",
         "Netherlands were awarded a direct free kick on the edge of the Argentine penalty area.",
@@ -131,6 +155,8 @@
       "title": "Extra Time Ends 2–2: Advances to Shootout",
       "matchMinute": "120+1' / ET",
       "videoTimeSeconds": 8783.16,
+      "replayStartSeconds": 8765.0,
+      "replayEndSeconds": 8835.0,
       "period": "extra_time",
       "type": "phase_transition",
       "description": "After 30 minutes of extra time the score remains 2–2; FIFA World Cup knockout regulations dictate that the winner is decided by a penalty shootout.",
@@ -138,7 +164,11 @@
       "scoreBefore": "2-2",
       "scoreAfter": "2-2",
       "people": ["Antonio Mateu Lahoz", "Lionel Messi", "Virgil van Dijk"],
-      "ruleTags": ["extra_time", "penalty_shootout", "knockout_rules"],
+      "ruleTags": ["extra_time_and_shootout"],
+      "statsBombPosition": {
+        "period": 4,
+        "minute": 120
+      },
       "facts": [
         "Neither side scored during the two 15-minute extra time periods.",
         "Under FIFA World Cup knockout rules, drawn matches after extra time proceed immediately to kicks from the penalty mark (shootout).",
@@ -161,6 +191,8 @@
       "title": "Argentina Win Shootout 4–3 & Dumfries Red Card",
       "matchMinute": "Shootout / FT",
       "videoTimeSeconds": 9318.0,
+      "replayStartSeconds": 9295.0,
+      "replayEndSeconds": 9360.0,
       "period": "shootout",
       "type": "shootout_result_and_card",
       "description": "Emiliano Martínez saves two penalties; Lautaro Martínez converts the winning kick (4–3). Denzel Dumfries receives his second caution and is sent off during post-shootout tension.",
@@ -168,7 +200,11 @@
       "scoreBefore": "2-2 (3-3 pens)",
       "scoreAfter": "2-2 (4-3 pens)",
       "people": ["Lautaro Martínez", "Emiliano Martínez", "Denzel Dumfries"],
-      "ruleTags": ["penalty_shootout", "second_yellow", "red_card"],
+      "ruleTags": ["extra_time_and_shootout", "shootout_disciplinary", "foul_and_misconduct"],
+      "statsBombPosition": {
+        "period": 5,
+        "minute": 127
+      },
       "facts": [
         "Goalkeeper Emiliano Martínez saved the Netherlands' first two kicks taken by Virgil van Dijk and Steven Berghuis.",
         "Lautaro Martínez scored Argentina's fifth penalty to secure a 4–3 shootout victory.",
