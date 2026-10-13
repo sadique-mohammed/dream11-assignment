@@ -242,28 +242,26 @@ export default function Home() {
 
       <div className="player-stage">
         <div className="mb-3 flex flex-wrap items-center gap-2.5">
-          {process.env.NODE_ENV === "development" && (
-            <select
-              aria-label="Preview an automatic match note"
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleTestFeedTrigger(e.target.value);
-                  e.target.value = "";
-                }
-              }}
-              className="cursor-pointer rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-cyan-300 hover:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-            >
-              <option value="" disabled>
-                Preview a match note…
+          <select
+            aria-label="Preview an automatic match note"
+            defaultValue=""
+            onChange={(e) => {
+              if (e.target.value) {
+                handleTestFeedTrigger(e.target.value);
+                e.target.value = "";
+              }
+            }}
+            className="cursor-pointer rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-cyan-300 hover:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-cyan-300"
+          >
+            <option value="" disabled>
+              Preview a match note…
+            </option>
+            {feedTriggers.map((t) => (
+              <option key={t.id} value={t.id}>
+                {formatPlaybackTime(t.videoTimeSeconds)} [{t.matchMinute}] {t.title}
               </option>
-              {feedTriggers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {formatPlaybackTime(t.videoTimeSeconds)} [{t.matchMinute}] {t.title}
-                </option>
-              ))}
-            </select>
-          )}
+            ))}
+          </select>
         </div>
         <MatchPlayer
           videoRef={videoRef}
