@@ -10,6 +10,8 @@ export default function AnswerCard({ answerData, capturedTimestamp, onReset }) {
     (answerData.confirmedFacts?.length > 0) ||
     (answerData.secondaryActions?.length > 0) ||
     (answerData.secondaryRules?.length > 0);
+  const isBreakUpdate = ["pre-match", "half-time", "second-half-start", "extra-time-break", "penalty-shootout", "post-match"]
+    .includes(answerData.matchState?.phase);
 
   return (
     <div className="flex flex-col gap-3 text-sm">
@@ -62,7 +64,11 @@ export default function AnswerCard({ answerData, capturedTimestamp, onReset }) {
       <section className="rounded-lg bg-zinc-900/90 p-3 border border-zinc-800/80">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-xs font-semibold text-cyan-300">
-            {isNoMatchingEvent ? "Incident Status" : "What happened"}
+            {isNoMatchingEvent && isBreakUpdate
+              ? "Match update"
+              : isNoMatchingEvent
+              ? "Answer"
+              : "What happened"}
           </h3>
           {answerData.explanationLevel && (
             <span className="text-[10px] text-zinc-400 capitalize">
@@ -84,7 +90,9 @@ export default function AnswerCard({ answerData, capturedTimestamp, onReset }) {
         <section className="border-t border-zinc-800 pt-2.5">
           <div className="flex items-center justify-between mb-1.5">
             <h3 className="text-xs font-semibold text-zinc-300">Match record</h3>
-            <span className="text-[10px] text-zinc-400">Official data feed</span>
+            <span className="text-[10px] text-zinc-400">
+              {answerData.possessionQuestion ? "StatsBomb event feed" : "Official data feed"}
+            </span>
           </div>
           <ul className="space-y-1.5 text-xs text-zinc-300">
             {answerData.primaryActions.map((action, index) => (

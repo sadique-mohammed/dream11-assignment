@@ -34,26 +34,6 @@ function getPanelPosition(bounds, petPosition, compact = false) {
   return { left, top };
 }
 
-function parseVttTimestamp(value) {
-  const parts = value.trim().split(":").map(Number);
-  if (parts.some(Number.isNaN)) return 0;
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  return (parts[0] || 0) * 60 + (parts[1] || 0);
-}
-
-function parseWebVtt(content) {
-  return content.split(/\r?\n\s*\r?\n/).flatMap((block, index) => {
-    const lines = block.trim().split(/\r?\n/);
-    const timingLine = lines.find((line) => line.includes("-->"));
-    if (!timingLine) return [];
-    const [start, end] = timingLine.split("-->").map((value) => value.trim().split(/\s+/)[0]);
-    const timingIndex = lines.indexOf(timingLine);
-    const text = lines.slice(timingIndex + 1).join(" ").replace(/<[^>]*>/g, "").trim();
-    if (!text) return [];
-    return [{ id: `${index}-${start}`, start: parseVttTimestamp(start), end: parseVttTimestamp(end), text }];
-  });
-}
-
 export default function MatchPlayer({
   videoRef,
   playbackTime,
@@ -77,9 +57,8 @@ export default function MatchPlayer({
   const [orbPosition, setOrbPosition] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [panelPosition, setPanelPosition] = useState({ left: 12, top: 12 });
-  const [transcriptOpen, setTranscriptOpen] = useState(false);
-  const [transcriptStatus, setTranscriptStatus] = useState("idle");
-  const [transcriptCues, setTranscriptCues] = useState([]);
+  const [videoLoadError, setVideoLoadError] = useState(false);
+  const videoSource = process.env.NEXT_PUBLIC_VIDEO_SRC || "https://live-lens-video.sadiquemohd48.workers.dev/live-match.mp4";
   const positionedNoteRef = useRef(null);
 
   const toggleCompanionAtOrb = () => {
@@ -117,26 +96,6 @@ export default function MatchPlayer({
     const petPosition = orbPosition ?? { left: bounds.width - 74, top: 18 };
     setPanelPosition(getPanelPosition(bounds, petPosition, true));
   }, [autoNoteEvent, companionOpen, orbPosition]);
-
-  useEffect(() => {
-    if (!transcriptOpen || transcriptStatus !== "loading") return;
-    let cancelled = false;
-    fetch("/media/commentary.vtt")
-      .then((response) => {
-        if (!response.ok) throw new Error("Transcript not found");
-        return response.text();
-      })
-      .then((content) => {
-        if (cancelled) return;
-        const cues = parseWebVtt(content);
-        setTranscriptCues(cues);
-        setTranscriptStatus(cues.length ? "ready" : "missing");
-      })
-      .catch(() => {
-        if (!cancelled) setTranscriptStatus("missing");
-      });
-    return () => { cancelled = true; };
-  }, [transcriptOpen, transcriptStatus]);
 
   const toggleFullscreen = useCallback(async () => {
     try {
@@ -299,13 +258,33 @@ export default function MatchPlayer({
           controlsList="nofullscreen"
           preload="metadata"
           playsInline
+          crossOrigin="anonymous"
           onTimeUpdate={onTimeUpdate}
           onSeeking={onSeeking}
           onSeeked={onSeeked}
+          onError={() => setVideoLoadError(true)}
         >
-          <source src="/media/live-match.mp4" type="video/mp4" />
+          <source src={videoSource} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
+
+        {videoLoadError && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center bg-zinc-950/95 backdrop-blur-md text-zinc-300">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3 text-lg font-bold">
+              !
+            </div>
+            <h3 className="text-sm font-semibold text-white mb-1.5">
+              Unable to load match video
+            </h3>
+            <p className="text-xs text-zinc-400 max-w-md leading-relaxed mb-3">
+              The video is streamed from Cloudflare R2 CDN. If playback fails, the CDN may be temporarily unreachable or your browser may not support the AV1 codec.
+            </p>
+            <p className="text-[11px] text-zinc-400 max-w-md leading-relaxed bg-zinc-900/80 border border-zinc-800 p-2.5 rounded-lg">
+              <strong className="text-zinc-200">AV1 not supported?</strong> Try Chrome, Edge, or Firefox. Safari 17+ also supports AV1.
+              Override the source with <code className="text-cyan-300 font-mono">NEXT_PUBLIC_VIDEO_SRC</code> if needed.
+            </p>
+          </div>
+        )}
 
         <button
           type="button"
@@ -414,17 +393,6 @@ export default function MatchPlayer({
         </div>
         <button
           type="button"
-          onClick={() => {
-            if (!transcriptOpen && transcriptStatus === "idle") setTranscriptStatus("loading");
-            setTranscriptOpen((open) => !open);
-          }}
-          aria-expanded={transcriptOpen}
-          className="min-h-11 cursor-pointer rounded-md border border-zinc-700 px-3 text-xs text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-        >
-          {transcriptOpen ? "Hide transcript" : "Transcript"}
-        </button>
-        <button
-          type="button"
           onClick={onToggleAutomaticNotes}
           aria-pressed={automaticNotesEnabled}
           className={`min-h-11 cursor-pointer rounded-md border px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
@@ -437,38 +405,6 @@ export default function MatchPlayer({
         </button>
       </div>
 
-      {transcriptOpen && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900/90 p-4" aria-label="Match transcript">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-white">Commentary transcript</h2>
-              <p className="mt-1 text-xs text-zinc-400">Choose a line to jump to that moment.</p>
-            </div>
-            <button type="button" onClick={() => setTranscriptOpen(false)} aria-label="Close transcript" className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg text-zinc-300 hover:bg-zinc-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
-            </button>
-          </div>
-          <div className="max-h-64 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-            {transcriptStatus === "loading" && <p className="text-sm text-zinc-300">Loading transcript…</p>}
-            {transcriptStatus === "missing" && <p className="text-sm leading-relaxed text-zinc-300">A transcript hasn’t been added for this match yet.</p>}
-            {transcriptStatus === "ready" && (
-              <ol className="space-y-1">
-                {transcriptCues.map((cue) => {
-                  const active = playbackTime >= cue.start && playbackTime < cue.end;
-                  return (
-                    <li key={cue.id}>
-                      <button type="button" onClick={() => { if (videoRef.current) videoRef.current.currentTime = cue.start; }} className={`flex w-full cursor-pointer gap-3 rounded-md px-2 py-2 text-left text-sm leading-relaxed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${active ? "bg-cyan-950/70 text-white" : "text-zinc-300 hover:bg-zinc-900"}`}>
-                        <span className="shrink-0 font-mono text-xs text-zinc-400">{formatPlaybackTime(cue.start)}</span>
-                        <span>{cue.text}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

@@ -39,8 +39,37 @@ export function formatAnswerPresentation({
 
   // 2. Lead with one short, definitive explanation
   let leadExplanation = "";
-  if (isNoMatching) {
-    leadExplanation = "No verified match incident is recorded for this playback timestamp.";
+  if (context?.possessionQuestion) {
+    const action = context.latestOnBallAction;
+    if (!action?.player) {
+      leadExplanation = "I can’t reliably identify who has the ball here. The match feed has no recent on-ball record for this point.";
+    } else if (action.secondsBeforePlayhead <= 10 && ["Ball Receipt*", "Carry", "Dribble", "Ball Recovery", "Interception"].includes(action.type)) {
+      leadExplanation = `The latest feed record shows ${action.player} of ${action.team} ${action.type === "Carry" ? "carrying" : action.type === "Ball Receipt*" ? "receiving" : action.type === "Dribble" ? "dribbling" : "recovering"} the ball at ${action.timeDisplay}, about ${action.secondsBeforePlayhead} seconds before this point. The feed does not confirm possession on the exact video frame.`;
+    } else {
+      leadExplanation = `The latest on-ball action in the feed was ${action.type.toLowerCase()} by ${action.player} at ${action.timeDisplay}. It does not confirm who has the ball on the exact video frame.`;
+    }
+  } else if (isNoMatching) {
+    const state = context?.matchState;
+    const score = state?.scoreDisplay;
+    const scoreSummary = getScoreSummary(state?.score);
+    const scoreStatus = scoreSummary || (score ? `The score is ${score}` : "The score is unavailable");
+    if (state?.phase === "pre-match") {
+      leadExplanation = "The match has not kicked off yet. The score is 0–0.";
+    } else if (state?.phase === "half-time") {
+      leadExplanation = `It's half-time. ${scoreSummary ? `${scoreSummary} at the break` : `${scoreStatus} at the break`}.${state?.lastGoal ? ` ${state.lastGoal.player} scored the latest goal.` : ""}`;
+    } else if (state?.phase === "second-half-start") {
+      leadExplanation = `The second half is starting. ${scoreStatus}.`;
+    } else if (state?.phase === "extra-time-break") {
+      leadExplanation = `The teams are taking a break before extra time. ${scoreSummary ? `${scoreSummary} after 90 minutes.` : `The score is unavailable after 90 minutes.`}`;
+    } else if (state?.phase === "penalty-shootout") {
+      leadExplanation = `${scoreSummary || `The score is ${score || "unavailable"}`} after extra time. A penalty shootout will decide the winner.`;
+    } else if (state?.phase === "post-match") {
+      leadExplanation = `The match has finished. Argentina won after the teams drew ${score || "after extra time"}.`;
+    } else if (score) {
+      leadExplanation = `At ${matchClockDisplay}, ${scoreSummary || `the score is ${score}`}. No selected incident is recorded at this exact moment.`;
+    } else {
+      leadExplanation = "I don’t have a verified incident for this moment yet. Ask me about a listed match moment or a football rule.";
+    }
   } else if (matched?.id === "dumfries-dismissal-shootout") {
     leadExplanation =
       "He received two cautions during the shootout and was sent off. The match report doesn’t say exactly what triggered the second caution.";
@@ -69,6 +98,17 @@ export function formatAnswerPresentation({
   let primaryActions = [];
   let secondaryActions = [];
 
+  if (context?.possessionQuestion && context.latestOnBallAction) {
+    const action = context.latestOnBallAction;
+    primaryActions = [{
+      id: `on-ball-${action.timeDisplay}-${action.player}`,
+      timeDisplay: action.timeDisplay,
+      type: `Latest recorded on-ball action · ${action.type}`,
+      player: action.player,
+      team: action.team,
+    }];
+  }
+
   const isCardQuestion =
     cleanQ.includes("card") ||
     cleanQ.includes("yellow") ||
@@ -85,7 +125,9 @@ export function formatAnswerPresentation({
     cleanQ.includes("score") ||
     cleanQ.includes("shot");
 
-  if (isCardQuestion && allActions.length > 0) {
+  if (context?.possessionQuestion) {
+    secondaryActions = [];
+  } else if (isCardQuestion && allActions.length > 0) {
     // Show only the cautions / red cards / fouls first
     primaryActions = allActions.filter(
       (a) =>
@@ -140,10 +182,18 @@ export function formatAnswerPresentation({
     secondaryRules = allRules.filter((r) => r.id !== primaryRule.id);
   }
 
+  const asksForRule = /\b(rule|offside|penalty|foul|card|added time|extra time|shootout)\b/i.test(cleanQ);
+  if (isNoMatching && asksForRule && primaryRule) {
+    leadExplanation = primaryRule.summary;
+  }
+
   return {
     question,
     eventStatus: context?.eventStatus || "no_matching_event",
     matchClockDisplay,
+    matchState: context?.matchState || null,
+    possessionQuestion: Boolean(context?.possessionQuestion),
+    latestOnBallAction: context?.latestOnBallAction || null,
     leadExplanation,
     primaryActions,
     secondaryActions,
@@ -154,4 +204,14 @@ export function formatAnswerPresentation({
     evidenceLimits: Array.isArray(context?.evidenceLimits) ? context.evidenceLimits : [],
     sources: Array.isArray(context?.sources) ? context.sources : [],
   };
+}
+
+function getScoreSummary(score) {
+  if (!score || typeof score.Argentina !== "number" || typeof score.Netherlands !== "number") {
+    return null;
+  }
+  if (score.Argentina === score.Netherlands) return `Argentina and the Netherlands are level ${score.Argentina}–${score.Netherlands}`;
+  const leader = score.Argentina > score.Netherlands ? "Argentina" : "The Netherlands";
+  const trailing = score.Argentina > score.Netherlands ? "the Netherlands" : "Argentina";
+  return `${leader} lead ${trailing} ${Math.max(score.Argentina, score.Netherlands)}–${Math.min(score.Argentina, score.Netherlands)}`;
 }

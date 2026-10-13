@@ -17,6 +17,54 @@ export const HIGH_SIGNAL_TYPES = new Set([
   "Substitution",
 ]);
 
+const ON_BALL_TYPES = new Set([
+  "Ball Receipt*",
+  "Carry",
+  "Dribble",
+  "Ball Recovery",
+  "Interception",
+  "Pass",
+  "Shot",
+]);
+
+/** Return the latest StatsBomb on-ball event at or before the playhead clock. */
+export function findLatestOnBallAction(events, { period, minute, second = 59 } = {}) {
+  if (!Array.isArray(events) || typeof period !== "number" || typeof minute !== "number") {
+    return null;
+  }
+
+  const eligible = events
+    .map((event, index) => ({ event, index }))
+    .filter(({ event }) => {
+      const type = event?.type?.name || event?.type;
+      if (!ON_BALL_TYPES.has(type) || event.period !== period) return false;
+      if (event.minute > minute) return false;
+      return event.minute < minute || (event.second || 0) <= second;
+    })
+    .sort((a, b) =>
+      a.event.minute - b.event.minute ||
+      (a.event.second || 0) - (b.event.second || 0) ||
+      a.index - b.index
+    );
+
+  const latest = eligible.at(-1)?.event;
+  if (!latest) return null;
+  const eventType = latest.type?.name || latest.type;
+  const elapsedSeconds = Math.max(
+    0,
+    (minute - latest.minute) * 60 + second - (latest.second || 0)
+  );
+
+  return {
+    player: latest.player?.name || null,
+    team: latest.team?.name || null,
+    type: eventType,
+    recipient: latest.pass?.recipient?.name || null,
+    timeDisplay: `${latest.minute}:${String(latest.second || 0).padStart(2, "0")}`,
+    secondsBeforePlayhead: elapsedSeconds,
+  };
+}
+
 /**
  * Resolves the numeric period and minute for querying /api/statsbomb,
  * or determines that the query should be skipped with a stated reason.

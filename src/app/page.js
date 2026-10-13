@@ -40,6 +40,30 @@ export default function Home() {
     setCompanionOpen(true);
   };
 
+  const getBreakStatusNote = (matchMinute, videoTimeSeconds) => {
+    const notes = {
+      HT: {
+        title: "Half-time",
+        quickNote: "Half-time: Argentina lead the Netherlands 1–0. Nahuel Molina scored in the first half.",
+      },
+      "90' (ET Break)": {
+        title: "Extra-time break",
+        quickNote: "The match is 2–2 after 90 minutes. The teams are taking a short break before extra time.",
+      },
+      Penalties: {
+        title: "Penalty shootout",
+        quickNote: "The match is still 2–2 after extra time. Penalties will decide the winner.",
+      },
+    };
+    const note = notes[matchMinute];
+    return note ? {
+      id: `break-${matchMinute}`,
+      matchMinute,
+      videoTimeSeconds,
+      ...note,
+    } : null;
+  };
+
   // Show a note when playback crosses an event timestamp.
   const handleTimeUpdate = () => {
     const video = videoRef.current;
@@ -51,6 +75,16 @@ export default function Home() {
 
     // Ignore initial restores and large jumps; only notify while naturally watching.
     if (!automaticNotesEnabled || video.paused || previous === null || current <= previous || current - previous > 3) return;
+
+    const previousMatchMinute = getMatchMinuteAtTime(previous, false);
+    const currentMatchMinute = getMatchMinuteAtTime(current, false);
+    if (previousMatchMinute !== currentMatchMinute) {
+      const breakNote = getBreakStatusNote(currentMatchMinute, current);
+      if (breakNote) {
+        showAutomaticNote(breakNote);
+        return;
+      }
+    }
 
     const crossedEvent = curatedEvents.find((event) =>
       previous < event.videoTimeSeconds && current >= event.videoTimeSeconds

@@ -71,6 +71,22 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+### 6. Hosting online (Vercel Deployment)
+
+Because GitHub has a 100 MB file limit and Vercel has serverless/asset bundle limits, the 2.7 GB `live-match.mp4` is excluded from Git via `.gitignore`.
+
+To enable video playback when hosted on Vercel:
+1. Upload your generated `live-match.mp4` to any cloud object storage / CDN with public HTTP Range support:
+   - **Cloudflare R2** (recommended, zero egress fees, 10 GB free storage)
+   - **AWS S3 + CloudFront**
+   - **Google Cloud Storage**
+2. In your Vercel Project Settings under **Environment Variables**, set:
+   ```bash
+   NEXT_PUBLIC_VIDEO_SRC=https://your-cdn-domain.com/live-match.mp4
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+3. If `NEXT_PUBLIC_VIDEO_SRC` is not set, the player defaults to `/media/live-match.mp4` for local development. If the file is missing in production, the player displays a clear guidance screen.
+
 ## Running Tests & Validation
 
 The project includes automated validation and unit test suites:

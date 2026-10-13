@@ -1,6 +1,6 @@
 import { getCuratedEvents, getEventById } from "./events.js";
 import { retrieveMatchingRules } from "./rules.js";
-import { filterHighSignalStatsBombActions } from "./statsbomb-mapping.js";
+import { filterHighSignalStatsBombActions, findLatestOnBallAction } from "./statsbomb-mapping.js";
 
 const TIMESTAMP_MATCH_FALLBACK_WINDOW_SEC = 25;
 
@@ -44,6 +44,8 @@ export function buildContext({
   selectedEventId = null,
   question = "",
   statsBombEvents = null,
+  matchState = null,
+  matchPosition = null,
 } = {}) {
   const curatedEvents = getCuratedEvents();
   const timeSec = typeof playbackTimeSec === "number" && !isNaN(playbackTimeSec) ? playbackTimeSec : 0;
@@ -89,9 +91,10 @@ export function buildContext({
   });
 
   // 4. Match state
-  let matchState = null;
+  let resolvedMatchState = matchState;
   if (matchedEvent) {
-    matchState = {
+    resolvedMatchState = {
+      ...matchState,
       scoreBefore: matchedEvent.scoreBefore,
       scoreAfter: matchedEvent.scoreAfter,
       period: matchedEvent.period,
@@ -107,6 +110,10 @@ export function buildContext({
     maxAllowedMinute = matchedEvent.statsBombPosition.minute + 1;
   }
   const highSignalActions = filterHighSignalStatsBombActions(statsBombEvents, { maxAllowedMinute });
+  const possessionQuestion = /\b(who|which player).{0,30}\b(ball|possession|on the ball)\b|\bwho('?s| is) on the ball\b/i.test(cleanQuestion);
+  const latestOnBallAction = possessionQuestion
+    ? findLatestOnBallAction(statsBombEvents, matchPosition || {})
+    : null;
 
   // 6. Aggregate sources
   const sources = [];
@@ -137,21 +144,29 @@ export function buildContext({
     uncertainty.push(...matchedEvent.uncertainty);
   }
 
-  const evidenceLimits = [
-    "StatsBomb events reflect feed-recorded match actions; they cannot establish referee intent or unrecorded tactical rationale.",
-  ];
-  if (!matchedEvent) {
+  const evidenceLimits = [];
+  if (Array.isArray(statsBombEvents) && !possessionQuestion) {
     evidenceLimits.push(
-      "No verified match incident recorded for this playback timestamp. Showing applicable general rules only."
+      "StatsBomb records match actions; it cannot establish referee intent or unrecorded tactical rationale."
     );
+  }
+  if (
+    !matchedEvent &&
+    !possessionQuestion &&
+    !["pre-match", "half-time", "second-half-start", "extra-time-break", "penalty-shootout", "post-match"]
+      .includes(matchState?.phase)
+  ) {
+    evidenceLimits.push("No verified match incident recorded for this playback timestamp.");
   }
 
   return {
     eventStatus,
     matchedEvent,
-    matchState,
+    matchState: resolvedMatchState,
     rules,
     statsBombActions: highSignalActions,
+    possessionQuestion,
+    latestOnBallAction,
     statsBombStatus: {
       queried: Array.isArray(statsBombEvents),
       actionsCount: highSignalActions.length,
@@ -166,6 +181,7 @@ export function buildContext({
       playbackTimeSec: timeSec,
       explicitEventRequested: selectedEventId,
       question: cleanQuestion,
+      matchPosition,
       timestampMatchesAllowed: selectedEventId === null || selectedEventId === undefined,
     },
   };
